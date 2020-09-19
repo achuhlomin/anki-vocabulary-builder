@@ -1,0 +1,11 @@
+.card {
+    font-family: arial, serif;
+    font-size: 14px;
+    text-align: left;
+    color: black;
+    background-color: white;
+}
+
+.replay-button svg {
+    height: 1.5em;
+}
