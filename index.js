@@ -67,7 +67,7 @@ const addNote = async (info) => {
                 'fields': {
                     'word': word,
                     'def': def,
-                    'part': part,
+                    'part': part.replace(/\s/g, ''),
                     'phon_uk': phonUK,
                     'phon_us': phonUS,
                     'ex1': examples[0],
@@ -153,9 +153,7 @@ const sync = async () => {
 }
 
 const terms = [
-    'pristine',
-    'vigilant',
-    'peninsula',
+    'needle',
 ]
 
 const results = await addTerms(terms)
