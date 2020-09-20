@@ -19,6 +19,7 @@
   "homepage": "https://github.com/achuhlomin/anki-vocabulary-builder#readme",
   "dependencies": {
     "got": "^10.7.0",
-    "jsdom": "^16.4.0"
+    "jsdom": "^16.4.0",
+    "telegraf": "^3.38.0"
   }
 }
