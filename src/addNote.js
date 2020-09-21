@@ -23,7 +23,7 @@ export const addNote = async (info) => {
                 'fields': {
                     'word': word,
                     'def': def,
-                    'part': part.replace(/\s/g, ''),
+                    'part': part,
                     'phon_uk': phonUK,
                     'phon_us': phonUS,
                     'ex1': examples[0],

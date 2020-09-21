@@ -32,8 +32,8 @@ export const getInfo = async (term) => {
 
     return {
         word,
-        def,
-        part,
+        def: def.trim().replace(/:$/, '').trim(),
+        part: part.replace(' or ', ',').replace(/\s/g, ''),
         phonUK,
         phonUS,
         urlUK: `https://${domain}${urlUK}`,
