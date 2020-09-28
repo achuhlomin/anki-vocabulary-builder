@@ -20,6 +20,7 @@
   "dependencies": {
     "got": "^10.7.0",
     "jsdom": "^16.4.0",
+    "node-fetch": "^2.6.1",
     "telegraf": "^3.38.0"
   }
 }

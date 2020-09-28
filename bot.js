@@ -1,8 +1,19 @@
 import Telegraf from 'telegraf'
 import Markup from 'telegraf/markup.js'
-import {getInfo} from './src/getInfo.js'
-import {addNote} from './src/addNote.js'
-import {sync} from './src/sync.js'
+import { getInfo } from './src/getInfo.js'
+import { addNote } from './src/addNote.js'
+import { sync } from './src/sync.js'
+
+const connect = {
+  andrewchuhlomin: {
+    endpoint: 'http://localhost:8765',
+    deckName: '8. Vocabulary Builder'
+  },
+  aksana_nanana: {
+    endpoint: 'http://localhost:8766',
+    deckName: 'Vocabulary Builder'
+  },
+}
 
 const dictionaryCache = {};
 const userCache = {};
@@ -50,14 +61,26 @@ const onMessageHandler = async (ctx) => {
       ]).extra()
     )
 
-    userCache[result.message_id] = term;
+    userCache[result.message_id] = term
   } catch (e) {
     return ctx.reply(e.message)
   }
 }
 
+const getAnki = async (ctx) => {
+  const { username } = await ctx.getChat();
+  const anki = connect[username]
+
+  if (!anki) {
+    throw new Error(`Sorry! Your anki isn't registered.`)
+  }
+
+  return anki
+}
+
 const onAddHandler = async (ctx) => {
   try {
+    const { endpoint, deckName } = await getAnki(ctx);
     const term = userCache[ctx.update.callback_query.message.message_id]
     const info = dictionaryCache[term]
 
@@ -69,9 +92,9 @@ const onAddHandler = async (ctx) => {
 
     const { word } = info;
 
-    await sync()
+    await sync(endpoint)
 
-    const { error } = await addNote(info)
+    const { error } = await addNote(endpoint, deckName, info)
 
     if (error) {
       await ctx.answerCbQuery()
@@ -79,7 +102,7 @@ const onAddHandler = async (ctx) => {
       return ctx.reply(`${error} 🏓`)
     }
 
-    await sync()
+    await sync(endpoint)
     await ctx.answerCbQuery()
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
     await ctx.reply(`"${word}" added successfully! 👍`)

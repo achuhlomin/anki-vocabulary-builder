@@ -32,7 +32,7 @@ export const getInfo = async (term) => {
 
     return {
         word,
-        def: def.trim().replace(/:$/, '').trim(),
+        def: def.trim().replace(/:$/, '').trim(), // todo:: replace hints to ...
         part: part.replace(' or ', ',').replace(/\s/g, ''),
         phonUK,
         phonUS,

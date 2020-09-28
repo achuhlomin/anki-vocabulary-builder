@@ -1,6 +1,6 @@
 import got from 'got'
 
-export const addNote = async (info) => {
+export const addNote = async (endpoint, deckName, info) => {
     const {
         word,
         def,
@@ -18,7 +18,7 @@ export const addNote = async (info) => {
         'version': 6,
         'params': {
             'note': {
-                'deckName': '8. Vocabulary Builder',
+                'deckName': deckName,
                 'modelName': 'Vocabulary Builder',
                 'fields': {
                     'word': word,
@@ -56,7 +56,7 @@ export const addNote = async (info) => {
     }
 
     // https://github.com/FooSoft/anki-connect/blob/master/actions/notes.md
-    const { body } = await got.post('http://localhost:8765', {
+    const { body } = await got.post(endpoint, {
         json: data,
         responseType: 'json'
     });
