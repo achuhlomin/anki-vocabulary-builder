@@ -1,30 +1,21 @@
-### Build anki image
+## Setup
 
-make build
+https://github.com/FooSoft/anki-connect  
 
-### Set up anki-connect
+### Set up anki image
 
-1. `make run`
-
-1. Install (Tools > Addons > Get Addons > 2055492159)
-
-2. Set config:
-
-    "webBindAddress": "0.0.0.0"
+1. `make build`
+2. `make run_local`
+3. Install `Anki Connect` (Tools > Addons > Get Addons > 2055492159)
+4. Configure addon `"webBindAddress": "0.0.0.0"`
+5. `make commit_connect`
     
-3. Create anki:connect image 
+### Set up user's anki
 
-    docker commit <anki-container> anki:connect
-    
-### Set up user's container
-
-1. Run anki:connect `make run`
+1. `make run_connect`
 2. Sync anki with user's web anki
-3. Create anki:<user> image
-
-    docker commit <anki-connect-container> anki:<user>
+3. `make commit_user name=<username>`
     
+### Test
     
-    
-    
-curl localhost:8765 -X POST -d "{ \"action\": \"sync\", \"version\": 6 }"
+    curl localhost:8765 -X POST -d "{ \"action\": \"sync\", \"version\": 6 }"
