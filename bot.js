@@ -2,7 +2,8 @@ import Telegraf from 'telegraf'
 import util from 'util'
 import childProcess from 'child_process'
 import Markup from 'telegraf/markup.js'
-import { getInfo } from './src/getInfo.js'
+import { getDefinition } from './src/getDefinition.js'
+import { detect, lookup } from './src/translate.js'
 import { addNote } from './src/addNote.js'
 import { sync } from './src/sync.js'
 
@@ -16,54 +17,10 @@ const meta = {
 
 const dictionaryCache = {};
 const userCache = {};
-
+const studentLang = process.env.STUDENT_LANG
 const bot = new Telegraf(process.env.BOT_TOKEN)
 
 bot.use(Telegraf.log())
-
-const getInfoByTerm = async (term) => {
-  if (dictionaryCache[term]) {
-    return dictionaryCache[term]
-  }
-
-  const info = await getInfo(term)
-
-  if (info && !dictionaryCache[term]) {
-    dictionaryCache[term] = info
-  }
-
-  return info
-}
-
-const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
-
-const onHelpHandler = (ctx) => ctx.reply('Send me a word that I will add to your anki 🙂')
-
-const onMessageHandler = async (ctx) => {
-  try {
-    await ctx.replyWithChatAction('typing')
-
-    const term = ctx.message.text;
-    const info = await getInfoByTerm(term)
-
-    if (!info) return ctx.reply(`Word isn't found. Check availability of this one in Cambridge Dictionary 🤷🏼‍♀️`)
-
-    const { word, phonUK, def, part, urlUK } = info
-
-    await ctx.replyWithVoice({ filename: urlUK, url: urlUK })
-
-    const result = await ctx.reply(`${word} ${phonUK} — ${def}. ${part}`,
-      Markup.inlineKeyboard([
-        Markup.callbackButton('Add', 'add'),
-        Markup.callbackButton('Cancel', 'cancel')
-      ]).extra()
-    )
-
-    userCache[result.message_id] = term
-  } catch (e) {
-    return ctx.reply(e.message)
-  }
-}
 
 const getMeta = async (ctx) => {
   const { username } = await ctx.getChat();
@@ -81,12 +38,84 @@ const getMeta = async (ctx) => {
   }
 }
 
+const cacheTerm = async (term, translations) => {
+  if (dictionaryCache[term]) {
+    return dictionaryCache[term]
+  }
+
+  const info = await getDefinition(term)
+
+  if (info && !dictionaryCache[term]) {
+    const cache = {
+      ...info,
+      translations,
+    }
+
+    dictionaryCache[term] = cache
+
+    return cache
+  }
+
+  return null
+}
+
+const getTranslations = async (text) => {
+  const sourceLanguage = await detect(text)
+
+  if (sourceLanguage === 'en') {
+    const { normalizedSource, translations } = await lookup(text, sourceLanguage, studentLang)
+
+    return {
+      term: normalizedSource,
+      translations: translations.map(t => t.normalizedTarget),
+    }
+  }
+
+  const { translations: terms } = await lookup(text, sourceLanguage, 'en')
+  const term = terms[0];
+
+  return {
+    term: term.normalizedTarget,
+    translations: term.backTranslations.map(t => t.normalizedText),
+  }
+}
+
+const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
+
+const onHelpHandler = (ctx) => ctx.reply('Send me a word that I will add to your anki 🙂')
+
+const onMessageHandler = async (ctx) => {
+  try {
+    await ctx.replyWithChatAction('typing')
+
+    const { term, translations } = await getTranslations(ctx.message.text);
+    const info = await cacheTerm(term, translations)
+
+    if (!info) return ctx.reply(`Word isn't found. Check availability of this one in Cambridge Dictionary 🤷🏼‍♀️`)
+
+    const { word, phonUK, def, part, urlUK } = info
+
+    await ctx.replyWithVoice({ filename: urlUK, url: urlUK })
+
+    const result = await ctx.reply(`${word} ${phonUK} — ${def}. ${part}\n\n<i>${translations.join(', ')}</i>`,
+      Markup.inlineKeyboard([
+        Markup.callbackButton('Add', 'add'),
+        Markup.callbackButton('Cancel', 'cancel')
+      ]).extra({ parse_mode: 'HTML' })
+    )
+
+    userCache[result.message_id] = term
+  } catch (e) {
+    return ctx.reply(e.message)
+  }
+}
+
 const onSync = async (ctx) => {
   try {
     const { endpoint } = await getMeta(ctx)
-    const syncResult = await sync(endpoint)
+    const syncResp = await sync(endpoint)
 
-    if (!syncResult || syncResult.error) {
+    if (!syncResp || syncResp.error) {
       await ctx.answerCbQuery()
 
       throw new Error(`Failure! Sync not available, please try again later 🏓`)

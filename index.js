@@ -1,10 +1,10 @@
-import { getInfo } from './src/getInfo.js'
+import { getDefinition } from './src/getDefinition.js'
 import { addNote } from './src/addNote.js'
 import { sync } from './src/sync.js'
 
 const addTerms = () => {
     return Promise.all(terms.map(async term => {
-        const info = await getInfo(term)
+        const info = await getDefinition(term)
 
         if (!info) {
             return {

@@ -19,7 +19,7 @@ image: gui
 	docker commit anki_$(name) anki:$(name)
 	docker container rm anki_$(name)
 
-ankid:
+ankid: image
 	docker run \
 		-d \
 		-e QT_QPA_PLATFORM=minimal \

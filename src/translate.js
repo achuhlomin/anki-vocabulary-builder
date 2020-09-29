@@ -1,46 +1,56 @@
-import request from 'request';
+import axios from 'axios';
 import { v4 } from 'uuid';
 
-const key_var = 'TRANSLATOR_TEXT_SUBSCRIPTION_KEY';
-if (!process.env[key_var]) {
-  throw new Error('Please set/export the following environment variable: ' + key_var);
-}
-const subscriptionKey = process.env[key_var];
-const endpoint_var = 'TRANSLATOR_TEXT_ENDPOINT';
-if (!process.env[endpoint_var]) {
-  throw new Error('Please set/export the following environment variable: ' + endpoint_var);
-}
-const endpoint = process.env[endpoint_var];
-const region_var = 'TRANSLATOR_TEXT_REGION_AKA_LOCATION';
-if (!process.env[region_var]) {
-  throw new Error('Please set/export the following environment variable: ' + region_var);
-}
-const region = process.env[region_var];
+const subscriptionKey = process.env.TRANSLATOR_TOKEN;
+const endpoint = "https://api.cognitive.microsofttranslator.com";
 
-function translateText(){
-  let options = {
-    method: 'POST',
-    baseUrl: endpoint,
-    url: 'translate',
-    qs: {
-      'api-version': '3.0',
-      'to': ['en']
-    },
+export const detect = async (text) => {
+  const detectResp = await axios({
+    baseURL: endpoint,
+    url: 'detect',
+    method: 'post',
     headers: {
       'Ocp-Apim-Subscription-Key': subscriptionKey,
-      'Ocp-Apim-Subscription-Region': region,
       'Content-type': 'application/json',
       'X-ClientTraceId': v4()
     },
-    body: [{
-      'text': 'Hello World!'
+    params: {
+      'api-version': '3.0',
+    },
+    data: [{
+      Text: text
     }],
-    json: true,
-  };
+    responseType: 'json'
+  })
 
-  request(options, function(err, res, body){
-    console.log(JSON.stringify(body, null, 4));
-  });
+  return detectResp.data[0].language
 }
 
-translateText();
+export const lookup = async (text, from, to) => {
+  const lookupResp = await axios({
+    baseURL: endpoint,
+    url: 'dictionary/lookup',
+    method: 'post',
+    headers: {
+      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      'Content-type': 'application/json',
+      'X-ClientTraceId': v4()
+    },
+    params: {
+      'api-version': '3.0',
+      'from': from,
+      'to': to
+    },
+    data: [{
+      'text': text
+    }],
+    responseType: 'json'
+  })
+
+  const { normalizedSource, translations } = lookupResp.data[0]
+
+  return {
+    normalizedSource,
+    translations,
+  }
+}

@@ -2,7 +2,7 @@ import jsdom from 'jsdom'
 
 const { JSDOM } = jsdom
 
-export const getInfo = async (term) => {
+export const getDefinition = async (term) => {
     const domain = 'dictionary.cambridge.org'
     const htmlUrl = `https://${domain}/dictionary/english/${encodeURI(term)}`
     const dom = await JSDOM.fromURL(htmlUrl);

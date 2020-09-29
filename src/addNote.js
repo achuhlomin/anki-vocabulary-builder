@@ -11,6 +11,7 @@ export const addNote = async (endpoint, deckName, info) => {
         urlUS,
         examples,
         synonyms,
+        translations,
     } = info
 
     const data = {
@@ -30,6 +31,7 @@ export const addNote = async (endpoint, deckName, info) => {
                     'ex2': examples[1],
                     'ex3': examples[2],
                     'syns': synonyms.join(', '),
+                    'trans': translations.join(', '),
                 },
                 'options': {
                     'allowDuplicate': false,
