@@ -3,7 +3,7 @@ import util from 'util'
 import childProcess from 'child_process'
 import Markup from 'telegraf/markup.js'
 import { getDefinition } from './src/getDefinition.js'
-import { detect, lookup } from './src/translate.js'
+import { detect, lookup, translate } from './src/translate.js'
 import { addNote } from './src/addNote.js'
 import { sync } from './src/sync.js'
 
@@ -63,21 +63,12 @@ const getTranslations = async (text) => {
   const sourceLanguage = await detect(text)
 
   if (sourceLanguage === 'en') {
-    const { normalizedSource, translations } = await lookup(text, sourceLanguage, studentLang)
-
-    return {
-      term: normalizedSource,
-      translations: translations.map(t => t.normalizedTarget),
-    }
+    return await lookup(text, sourceLanguage, studentLang)
   }
 
-  const { translations: terms } = await lookup(text, sourceLanguage, 'en')
-  const term = terms[0];
+  const translatedText = await translate(text, studentLang, 'en')
 
-  return {
-    term: term.normalizedTarget,
-    translations: term.backTranslations.map(t => t.normalizedText),
-  }
+  return await lookup(translatedText, 'en', studentLang)
 }
 
 const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
@@ -89,9 +80,12 @@ const onMessageHandler = async (ctx) => {
     await ctx.replyWithChatAction('typing')
 
     const { term, translations } = await getTranslations(ctx.message.text);
+
+    if (!term) return ctx.reply(`Word isn't found. Check availability of this one in "Bing Translator" 🤷🏼‍♀️`)
+
     const info = await cacheTerm(term, translations)
 
-    if (!info) return ctx.reply(`Word isn't found. Check availability of this one in Cambridge Dictionary 🤷🏼‍♀️`)
+    if (!info) return ctx.reply(`Word isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
 
     const { word, phonUK, def, part, urlUK } = info
 

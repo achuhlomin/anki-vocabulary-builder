@@ -50,7 +50,31 @@ export const lookup = async (text, from, to) => {
   const { normalizedSource, translations } = lookupResp.data[0]
 
   return {
-    normalizedSource,
-    translations,
+    term: normalizedSource,
+    translations: translations.map(t => t.normalizedTarget),
   }
+}
+
+export const translate = async (text, from, to) => {
+  const lookupResp = await axios({
+    baseURL: endpoint,
+    url: 'translate',
+    method: 'post',
+    headers: {
+      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      'Content-type': 'application/json',
+      'X-ClientTraceId': v4()
+    },
+    params: {
+      'api-version': '3.0',
+      'from': from,
+      'to': to
+    },
+    data: [{
+      'text': text
+    }],
+    responseType: 'json'
+  })
+
+  return lookupResp.data[0].translations[0].text
 }
