@@ -1,10 +1,9 @@
 {
   "name": "anki-vacabulary-builder",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "type": "module",
   "scripts": {
+    "bot": "node ./bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,6 +20,8 @@
     "got": "^10.7.0",
     "jsdom": "^16.4.0",
     "node-fetch": "^2.6.1",
-    "telegraf": "^3.38.0"
+    "request": "^2.88.2",
+    "telegraf": "^3.38.0",
+    "uuid": "^8.3.0"
   }
 }

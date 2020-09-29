@@ -1,13 +1,13 @@
 import got from "got";
-import fetch from "node-fetch";
 
 export const sync = async (endpoint) => {
-    await fetch(endpoint, {
-        method: 'post',
-        body: JSON.stringify({
+    const { body } = await got.post(endpoint, {
+        json: {
             'action': 'sync',
             'version': 6
-        }),
-        headers: { 'Content-Type': 'application/json' },
-    })
+        },
+        responseType: 'json'
+    });
+
+    return body
 }
