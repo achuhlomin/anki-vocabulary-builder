@@ -12,9 +12,8 @@ const exec = util.promisify(childProcess.exec)
 const STUDENT_LANG = process.env.STUDENT_LANG
 const BOT_TOKEN = process.env.BOT_TOKEN
 
-const dictionaryCache = {};
-const userCache = {};
 const bot = new Telegraf(BOT_TOKEN)
+const cache = {};
 
 const anki = {
   andrewchuhlomin: {
@@ -46,44 +45,6 @@ const getTerm = async (text) => {
   return term.toLowerCase();
 }
 
-const getDefinition = async (term) => {
-  const cache = dictionaryCache[term];
-
-  if (cache && cache.definition) {
-    return cache.definition
-  }
-
-  const definition = await define(term);
-
-  if (definition) {
-    dictionaryCache[term] = {
-      ...cache,
-      definition
-    }
-
-    return definition;
-  }
-
-  return null
-}
-
-const getTranslations = async (term) => {
-  const cache = dictionaryCache[term];
-
-  if (cache && cache.translations) {
-    return cache.translations
-  }
-
-  const translations = await lookup(term, 'en', STUDENT_LANG);
-
-  dictionaryCache[term] = {
-    ...cache,
-    translations
-  }
-
-  return translations;
-}
-
 const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
 
 const onHelpHandler = (ctx) => ctx.reply('Send me a word that I will add to your anki 🙂')
@@ -93,14 +54,12 @@ const onMessageHandler = async (ctx) => {
     await ctx.replyWithChatAction('typing')
 
     const term = await getTerm(ctx.message.text);
-
-    const definition = await getDefinition(term)
+    const definition = await define(term);
 
     if (!definition) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
 
     const {word, phonUK, def, part, urlUK} = definition
-
-    const translations = await getTranslations(word)
+    const translations = await lookup(word, 'en', STUDENT_LANG);
 
     await ctx.replyWithVoice({filename: urlUK, url: urlUK})
 
@@ -111,7 +70,10 @@ const onMessageHandler = async (ctx) => {
       ]).extra({parse_mode: 'HTML'})
     )
 
-    userCache[result.message_id] = term
+    cache[result.message_id] = {
+      ...definition,
+      translations,
+    }
   } catch (e) {
     return ctx.reply(e.message)
   }
@@ -139,19 +101,15 @@ const onSync = async (ctx) => {
 const onAddHandler = async (ctx) => {
   try {
     const {endpoint, deckName} = await getConnect(ctx)
-    const term = userCache[ctx.update.callback_query.message.message_id]
-    const cache = dictionaryCache[term]
+    const fields = cache[ctx.update.callback_query.message.message_id]
 
-    if (!cache) {
+    if (!fields) {
       await ctx.answerCbQuery()
 
       throw new Error(
         `Failure! Add persistent cache 💩`
       )
     }
-
-    const { definition, translations } = cache;
-    const {word} = definition;
 
     const syncBefore = await sync(endpoint)
 
@@ -163,10 +121,7 @@ const onAddHandler = async (ctx) => {
       )
     }
 
-    const {error} = await addNote(endpoint, deckName, {
-      ...definition,
-      translations,
-    })
+    const {error} = await addNote(endpoint, deckName, fields)
 
     if (error) {
       await ctx.answerCbQuery()
@@ -180,6 +135,9 @@ const onAddHandler = async (ctx) => {
 
     await ctx.answerCbQuery()
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
+
+    const { word } = fields;
+
     await ctx.reply(
       `"${word}" added successfully! 👍`
     )
