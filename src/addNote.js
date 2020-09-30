@@ -1,6 +1,6 @@
 import got from 'got'
 
-export const addNote = async (endpoint, deckName, info) => {
+export const addNote = async (endpoint, deckName, fields) => {
     const {
         word,
         def,
@@ -12,7 +12,7 @@ export const addNote = async (endpoint, deckName, info) => {
         examples,
         synonyms,
         translations,
-    } = info
+    } = fields
 
     const data = {
         'action': 'addNote',

@@ -1,36 +1,36 @@
-import { getDefinition } from './src/getDefinition.js'
-import { addNote } from './src/addNote.js'
-import { sync } from './src/sync.js'
+import {define} from './src/define.js'
+import {addNote} from './src/addNote.js'
+import {sync} from './src/sync.js'
 
 const addTerms = () => {
-    return Promise.all(terms.map(async term => {
-        const info = await getDefinition(term)
+  return Promise.all(terms.map(async term => {
+    const info = await define(term)
 
-        if (!info) {
-            return {
-                term,
-                error: `Term isn't found`,
-            }
-        }
+    if (!info) {
+      return {
+        term,
+        error: `Term isn't found`,
+      }
+    }
 
-        const { error } = await addNote(info);
+    const {error} = await addNote(info);
 
-        if (error) {
-            return {
-                term,
-                error,
-            }
-        }
+    if (error) {
+      return {
+        term,
+        error,
+      }
+    }
 
-        return {
-            term,
-        }
-    }))
+    return {
+      term,
+    }
+  }))
 
 }
 
 const terms = [
-    'needle',
+  'needle',
 ]
 
 const results = await addTerms(terms)

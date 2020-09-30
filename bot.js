@@ -2,23 +2,25 @@ import Telegraf from 'telegraf'
 import util from 'util'
 import childProcess from 'child_process'
 import Markup from 'telegraf/markup.js'
-import {getDefinition} from './src/getDefinition.js'
-import {detect, lookup, translate} from './src/translate.js'
+import {define} from './src/define.js'
+import {lookup, translate} from './src/translate.js'
 import {addNote} from './src/addNote.js'
 import {sync} from './src/sync.js'
 
 const exec = util.promisify(childProcess.exec)
+
+const STUDENT_LANG = process.env.STUDENT_LANG
+const BOT_TOKEN = process.env.BOT_TOKEN
+
+const dictionaryCache = {};
+const userCache = {};
+const bot = new Telegraf(BOT_TOKEN)
 
 const anki = {
   andrewchuhlomin: {
     deckName: '8. Vocabulary Builder'
   },
 }
-
-const dictionaryCache = {};
-const userCache = {};
-const studentLang = process.env.STUDENT_LANG
-const bot = new Telegraf(process.env.BOT_TOKEN)
 
 bot.use(Telegraf.log())
 
@@ -38,37 +40,48 @@ const getConnect = async (ctx) => {
   }
 }
 
-const cacheTerm = async (term, translations) => {
-  if (dictionaryCache[term]) {
-    return dictionaryCache[term]
+const getTerm = async (text) => {
+  const term = await translate(text, STUDENT_LANG, 'en')
+
+  return term.toLowerCase();
+}
+
+const getDefinition = async (term) => {
+  const cache = dictionaryCache[term];
+
+  if (cache && cache.definition) {
+    return cache.definition
   }
 
-  const info = await getDefinition(term)
+  const definition = await define(term);
 
-  if (info && !dictionaryCache[term]) {
-    const cache = {
-      ...info,
-      translations,
+  if (definition) {
+    dictionaryCache[term] = {
+      ...cache,
+      definition
     }
 
-    dictionaryCache[term] = cache
-
-    return cache
+    return definition;
   }
 
   return null
 }
 
-const getTranslations = async (text) => {
-  const sourceLanguage = await detect(text)
+const getTranslations = async (term) => {
+  const cache = dictionaryCache[term];
 
-  if (sourceLanguage === 'en') {
-    return await lookup(text, sourceLanguage, studentLang)
+  if (cache && cache.translations) {
+    return cache.translations
   }
 
-  const translatedText = await translate(text, studentLang, 'en')
+  const translations = await lookup(term, 'en', STUDENT_LANG);
 
-  return await lookup(translatedText, 'en', studentLang)
+  dictionaryCache[term] = {
+    ...cache,
+    translations
+  }
+
+  return translations;
 }
 
 const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
@@ -79,15 +92,15 @@ const onMessageHandler = async (ctx) => {
   try {
     await ctx.replyWithChatAction('typing')
 
-    const {term, translations} = await getTranslations(ctx.message.text);
+    const term = await getTerm(ctx.message.text);
 
-    if (!term) return ctx.reply(`Word isn't found. Check availability of this one in "Bing Translator" 🤷🏼‍♀️`)
+    const definition = await getDefinition(term)
 
-    const info = await cacheTerm(term, translations)
+    if (!definition) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
 
-    if (!info) return ctx.reply(`Word isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
+    const {word, phonUK, def, part, urlUK} = definition
 
-    const {word, phonUK, def, part, urlUK} = info
+    const translations = await getTranslations(word)
 
     await ctx.replyWithVoice({filename: urlUK, url: urlUK})
 
@@ -99,23 +112,22 @@ const onMessageHandler = async (ctx) => {
     )
 
     userCache[result.message_id] = term
-  }
- catch (e) {
+  } catch (e) {
     return ctx.reply(e.message)
   }
 }
 
 const onSync = async (ctx) => {
   try {
-    const { endpoint } = await getConnect(ctx)
+    const {endpoint} = await getConnect(ctx)
     const syncResp = await sync(endpoint)
 
     if (!syncResp || syncResp.error) {
       await ctx.answerCbQuery()
 
       throw new Error(
-  `Failure! Sync not available, please try again later 🏓`
-)
+        `Failure! Sync not available, please try again later 🏓`
+      )
     }
   } catch (e) {
     console.error(e)
@@ -126,19 +138,20 @@ const onSync = async (ctx) => {
 
 const onAddHandler = async (ctx) => {
   try {
-    const { endpoint, deckName } = await getConnect(ctx)
+    const {endpoint, deckName} = await getConnect(ctx)
     const term = userCache[ctx.update.callback_query.message.message_id]
-    const info = dictionaryCache[term]
+    const cache = dictionaryCache[term]
 
-    if (!info) {
+    if (!cache) {
       await ctx.answerCbQuery()
 
       throw new Error(
-  `Failure! Add persistent cache 💩`
-)
+        `Failure! Add persistent cache 💩`
+      )
     }
 
-    const { word } = info;
+    const { definition, translations } = cache;
+    const {word} = definition;
 
     const syncBefore = await sync(endpoint)
 
@@ -146,18 +159,21 @@ const onAddHandler = async (ctx) => {
       await ctx.answerCbQuery()
 
       throw new Error(
-  `Failure! Sync not available, please try again later 🏓`
-)
+        `Failure! Sync not available, please try again later 🏓`
+      )
     }
 
-    const { error } = await addNote(endpoint, deckName, info)
+    const {error} = await addNote(endpoint, deckName, {
+      ...definition,
+      translations,
+    })
 
     if (error) {
       await ctx.answerCbQuery()
 
       throw new Error(
-  `${error} 🏓`
-)
+        `${error} 🏓`
+      )
     }
 
     const syncAfter = await sync(endpoint)
@@ -165,13 +181,13 @@ const onAddHandler = async (ctx) => {
     await ctx.answerCbQuery()
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
     await ctx.reply(
-  `"${word}" added successfully! 👍`
-)
+      `"${word}" added successfully! 👍`
+    )
 
     if (!syncAfter || syncAfter.error) {
       ctx.reply(
-  `"${word}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
-)
+        `"${word}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
+      )
     }
   } catch (e) {
     console.error(e)
@@ -184,8 +200,8 @@ const onCancelHandler = async (ctx) => {
   try {
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
     await ctx.answerCbQuery(
-  `Cancelled 🌊`
-)
+      `Cancelled 🌊`
+    )
   } catch (e) {
     console.error(e)
 
