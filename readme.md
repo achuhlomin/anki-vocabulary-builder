@@ -10,6 +10,6 @@ https://github.com/FooSoft/anki-connect
 
         export BOT_TOKEN=<TELEGRAM_BOT_TOKEN>
         export TRANSLATOR_TOKEN=<AZURE_TRANSLATOR_TOKEN>
-        export STUDENT_LANG=ru
+        export STUDENT_LANG=<AZURE_TRANSLATOR_LANG>
      
 5. Run `npm run bot`

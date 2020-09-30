@@ -2,14 +2,14 @@ import Telegraf from 'telegraf'
 import util from 'util'
 import childProcess from 'child_process'
 import Markup from 'telegraf/markup.js'
-import { getDefinition } from './src/getDefinition.js'
-import { detect, lookup, translate } from './src/translate.js'
-import { addNote } from './src/addNote.js'
-import { sync } from './src/sync.js'
+import {getDefinition} from './src/getDefinition.js'
+import {detect, lookup, translate} from './src/translate.js'
+import {addNote} from './src/addNote.js'
+import {sync} from './src/sync.js'
 
 const exec = util.promisify(childProcess.exec)
 
-const meta = {
+const anki = {
   andrewchuhlomin: {
     deckName: '8. Vocabulary Builder'
   },
@@ -22,15 +22,15 @@ const bot = new Telegraf(process.env.BOT_TOKEN)
 
 bot.use(Telegraf.log())
 
-const getMeta = async (ctx) => {
-  const { username } = await ctx.getChat();
-  const { stdout: ip } = await exec(`docker container inspect anki_${username} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
+const getConnect = async (ctx) => {
+  const {username} = await ctx.getChat();
+  const {stdout: ip} = await exec(`docker container inspect anki_${username} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
 
   if (!ip) {
     throw new Error(`Sorry! Your anki isn't registered.`)
   }
 
-  const customMeta = meta[username]
+  const customMeta = anki[username]
 
   return {
     endpoint: `http://${ip}:8765`,
@@ -79,7 +79,7 @@ const onMessageHandler = async (ctx) => {
   try {
     await ctx.replyWithChatAction('typing')
 
-    const { term, translations } = await getTranslations(ctx.message.text);
+    const {term, translations} = await getTranslations(ctx.message.text);
 
     if (!term) return ctx.reply(`Word isn't found. Check availability of this one in "Bing Translator" 🤷🏼‍♀️`)
 
@@ -87,32 +87,35 @@ const onMessageHandler = async (ctx) => {
 
     if (!info) return ctx.reply(`Word isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
 
-    const { word, phonUK, def, part, urlUK } = info
+    const {word, phonUK, def, part, urlUK} = info
 
-    await ctx.replyWithVoice({ filename: urlUK, url: urlUK })
+    await ctx.replyWithVoice({filename: urlUK, url: urlUK})
 
     const result = await ctx.reply(`${word} ${phonUK} — ${def}. ${part}\n\n<i>${translations.join(', ')}</i>`,
       Markup.inlineKeyboard([
         Markup.callbackButton('Add', 'add'),
         Markup.callbackButton('Cancel', 'cancel')
-      ]).extra({ parse_mode: 'HTML' })
+      ]).extra({parse_mode: 'HTML'})
     )
 
     userCache[result.message_id] = term
-  } catch (e) {
+  }
+ catch (e) {
     return ctx.reply(e.message)
   }
 }
 
 const onSync = async (ctx) => {
   try {
-    const { endpoint } = await getMeta(ctx)
+    const { endpoint } = await getConnect(ctx)
     const syncResp = await sync(endpoint)
 
     if (!syncResp || syncResp.error) {
       await ctx.answerCbQuery()
 
-      throw new Error(`Failure! Sync not available, please try again later 🏓`)
+      throw new Error(
+  `Failure! Sync not available, please try again later 🏓`
+)
     }
   } catch (e) {
     console.error(e)
@@ -123,14 +126,16 @@ const onSync = async (ctx) => {
 
 const onAddHandler = async (ctx) => {
   try {
-    const { endpoint, deckName } = await getMeta(ctx)
+    const { endpoint, deckName } = await getConnect(ctx)
     const term = userCache[ctx.update.callback_query.message.message_id]
     const info = dictionaryCache[term]
 
     if (!info) {
       await ctx.answerCbQuery()
 
-      throw new Error(`Failure! Add persistent cache 💩`)
+      throw new Error(
+  `Failure! Add persistent cache 💩`
+)
     }
 
     const { word } = info;
@@ -140,7 +145,9 @@ const onAddHandler = async (ctx) => {
     if (!syncBefore || syncBefore.error) {
       await ctx.answerCbQuery()
 
-      throw new Error(`Failure! Sync not available, please try again later 🏓`)
+      throw new Error(
+  `Failure! Sync not available, please try again later 🏓`
+)
     }
 
     const { error } = await addNote(endpoint, deckName, info)
@@ -148,17 +155,23 @@ const onAddHandler = async (ctx) => {
     if (error) {
       await ctx.answerCbQuery()
 
-      throw new Error(`${error} 🏓`)
+      throw new Error(
+  `${error} 🏓`
+)
     }
 
     const syncAfter = await sync(endpoint)
 
     await ctx.answerCbQuery()
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
-    await ctx.reply(`"${word}" added successfully! 👍`)
+    await ctx.reply(
+  `"${word}" added successfully! 👍`
+)
 
     if (!syncAfter || syncAfter.error) {
-      ctx.reply(`"${word}" added successfully! But sync not available for the time being. Please, run /sync a bit later`)
+      ctx.reply(
+  `"${word}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
+)
     }
   } catch (e) {
     console.error(e)
@@ -170,7 +183,9 @@ const onAddHandler = async (ctx) => {
 const onCancelHandler = async (ctx) => {
   try {
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
-    await ctx.answerCbQuery(`Cancelled 🌊`)
+    await ctx.answerCbQuery(
+  `Cancelled 🌊`
+)
   } catch (e) {
     console.error(e)
 

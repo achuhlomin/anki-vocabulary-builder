@@ -1,6 +1,17 @@
 import jsdom from 'jsdom'
+import _ from 'lodash'
 
 const { JSDOM } = jsdom
+
+const formatDef = (def, { word }) => {
+    const formattedDef = def.trim().replace(/:$/, '').trim()
+
+    if (formattedDef[0] === formattedDef[0].toUpperCase()) {
+        return _.lowerFirst(formattedDef).replace(new RegExp(word, 'g'), '..')
+    }
+
+    return formattedDef
+}
 
 export const getDefinition = async (term) => {
     const domain = 'dictionary.cambridge.org'
@@ -14,7 +25,10 @@ export const getDefinition = async (term) => {
 
     const word = $entry.querySelector('.headword').textContent
     const def = $entry.querySelector('.def').textContent
-    const part = $entry.querySelector('.posgram').textContent
+    const pos = $entry.querySelector('.pos')?.textContent
+    const region = $entry.querySelector('.region')?.textContent
+    const variant = $entry.querySelector('.var')?.textContent
+    const part = [pos, region, variant].filter(i => i).join(' ').toLowerCase()
 
     const $uk = $entry.querySelector('.uk')
     const urlUK = $uk.querySelector(`source[type='audio/mpeg']`).getAttribute('src')
@@ -32,8 +46,8 @@ export const getDefinition = async (term) => {
 
     return {
         word,
-        def: def.trim().replace(/:$/, '').trim(), // todo:: replace hints to ...
-        part: part.replace(' or ', ',').replace(/\s/g, ''),
+        def: formatDef(def, { word }),
+        part,
         phonUK,
         phonUS,
         urlUK: `https://${domain}${urlUK}`,
