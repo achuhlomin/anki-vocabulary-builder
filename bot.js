@@ -1,16 +1,18 @@
 import Telegraf from 'telegraf'
 import util from 'util'
 import childProcess from 'child_process'
+import _ from 'lodash'
 import Markup from 'telegraf/markup.js'
-import {define} from './src/define.js'
-import {lookup, translate} from './src/translate.js'
-import {addNote} from './src/addNote.js'
-import {sync} from './src/sync.js'
+import {translate as bingTranslate} from './src/translator/bing.js'
+import {lookup as cambridgeLookup} from './src/translator/cambridge.js'
+import {lookup as yandexLookup} from './src/translator/yandex.js'
+import {addNote} from './src/anki/addNote.js'
+import {sync} from './src/anki/sync.js'
 
 const exec = util.promisify(childProcess.exec)
 
-const STUDENT_LANG = process.env.STUDENT_LANG
 const BOT_TOKEN = process.env.BOT_TOKEN
+const STUDENT_LANG = process.env.STUDENT_LANG
 
 const bot = new Telegraf(BOT_TOKEN)
 const cache = {};
@@ -40,47 +42,23 @@ const getConnect = async (ctx) => {
 }
 
 const getTerm = async (text) => {
-  const term = await translate(text, STUDENT_LANG, 'en')
+  const translation = await bingTranslate(text, STUDENT_LANG, 'en')
 
-  return term.toLowerCase();
+  return translation.toLowerCase()
 }
 
-const onStartHandler = (ctx) => ctx.reply('Welcome! Send me a word 🥳')
+const onStartHandler = (ctx) => {
+  return ctx.reply('Welcome! Send me a word 🥳')
+}
 
-const onHelpHandler = (ctx) => ctx.reply('Send me a word that I will add to your anki 🙂')
+const onHelpHandler = (ctx) => {
+  return ctx.reply('Send me a word that I will try to add to your anki 🙂')
+}
 
-const onMessageHandler = async (ctx) => {
+const onSyncHandler = async (ctx) => {
   try {
     await ctx.replyWithChatAction('typing')
 
-    const term = await getTerm(ctx.message.text);
-    const definition = await define(term);
-
-    if (!definition) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
-
-    const {word, phonUK, def, part, urlUK} = definition
-    const translations = await lookup(word, 'en', STUDENT_LANG);
-
-    await ctx.replyWithVoice({filename: urlUK, url: urlUK})
-
-    const result = await ctx.reply(`${word} ${phonUK} — ${def}. ${part}\n\n<i>${translations.join(', ')}</i>`,
-      Markup.inlineKeyboard([
-        Markup.callbackButton('Add', 'add'),
-        Markup.callbackButton('Cancel', 'cancel')
-      ]).extra({parse_mode: 'HTML'})
-    )
-
-    cache[result.message_id] = {
-      ...definition,
-      translations,
-    }
-  } catch (e) {
-    return ctx.reply(e.message)
-  }
-}
-
-const onSync = async (ctx) => {
-  try {
     const {endpoint} = await getConnect(ctx)
     const syncResp = await sync(endpoint)
 
@@ -90,6 +68,95 @@ const onSync = async (ctx) => {
       throw new Error(
         `Failure! Sync not available, please try again later 🏓`
       )
+    }
+
+    return ctx.reply('Success! Anki synced 🥳')
+  } catch (e) {
+    console.error(e)
+
+    return ctx.reply(e.message)
+  }
+}
+
+const getDefinitionMsg = ({ term, def, region, phon, translations, meanings, pos, gram, hint }) => {
+  const part = [pos, region, gram, hint].filter(i => i).join(' ')
+  const _phon = phon ? ` ${phon}` : ''
+  const _def = `${term}${_phon} — ${def}. ${part}`
+  const _meanings = meanings && meanings.length ? `\n\nSee also: ${meanings.join(', ')}` : ''
+  const _translations = `\n\n<i>${translations.join(', ')}</i>`
+
+  return `${_def}${_translations}${_meanings}`
+}
+
+const onMessageHandler = async (ctx) => {
+  try {
+    await ctx.replyWithChatAction('typing')
+
+    const term = await getTerm(ctx.message.text);
+    const cambridgeData = await cambridgeLookup(term);
+
+    if (!cambridgeData) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
+
+    const pos = Object.keys(cambridgeData)[0]
+    const cambridgeDataByPos = cambridgeData[pos]
+
+    const {
+      term: cambridgeTerm,
+      def,
+      region,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+    } = cambridgeDataByPos
+
+    const yandexData = await yandexLookup(cambridgeTerm, 'en', STUDENT_LANG)
+    const yandexMeanings = yandexData[pos]?.meanings || []
+    const translations = yandexData[pos]?.translations || []
+
+    const meanings = _.without(yandexMeanings, cambridgeTerm)
+    const pronUrl = urlUK ? urlUK : urlUS
+
+    if (pronUrl) {
+      await ctx.replyWithVoice({filename: pronUrl, url: pronUrl})
+    }
+
+    const definitionMsg = getDefinitionMsg({
+      term: cambridgeTerm,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phon: phonUK ? phonUK : phonUS,
+      translations,
+      meanings,
+    })
+
+    const result = await ctx.reply(definitionMsg,
+      Markup.inlineKeyboard([
+        Markup.callbackButton('Add', 'add'),
+        Markup.callbackButton('Cancel', 'cancel')
+      ]).extra({parse_mode: 'HTML'})
+    )
+
+    cache[result.message_id] = {
+      term: cambridgeTerm,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+      translations,
+      meanings,
     }
   } catch (e) {
     console.error(e)
@@ -136,15 +203,15 @@ const onAddHandler = async (ctx) => {
     await ctx.answerCbQuery()
     await ctx.editMessageReplyMarkup({inline_keyboard: []})
 
-    const { word } = fields;
+    const { term } = fields;
 
     await ctx.reply(
-      `"${word}" added successfully! 👍`
+      `"${term}" added successfully! 👍`
     )
 
     if (!syncAfter || syncAfter.error) {
       ctx.reply(
-        `"${word}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
+        `"${term}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
       )
     }
   } catch (e) {
@@ -169,7 +236,7 @@ const onCancelHandler = async (ctx) => {
 
 bot.start(onStartHandler)
 bot.help(onHelpHandler)
-bot.command('sync', onSync)
+bot.command('sync', onSyncHandler)
 bot.on('message', onMessageHandler)
 bot.action('add', onAddHandler)
 bot.action('cancel', onCancelHandler)

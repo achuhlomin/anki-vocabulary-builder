@@ -1,23 +1,22 @@
 import axios from 'axios';
 import {v4} from 'uuid';
 
-const subscriptionKey = process.env.TRANSLATOR_TOKEN;
+const BING_TOKEN = process.env.BING_TOKEN;
+
 const endpoint = "https://api.cognitive.microsofttranslator.com";
 
-export const lookup = async (text, from, to) => {
+export const detect = async (text) => {
   const lookupResp = await axios({
     baseURL: endpoint,
-    url: 'dictionary/lookup',
+    url: 'detect',
     method: 'post',
     headers: {
-      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      'Ocp-Apim-Subscription-Key': BING_TOKEN,
       'Content-type': 'application/json',
       'X-ClientTraceId': v4()
     },
     params: {
       'api-version': '3.0',
-      'from': from,
-      'to': to
     },
     data: [{
       'text': text
@@ -25,7 +24,7 @@ export const lookup = async (text, from, to) => {
     responseType: 'json'
   })
 
-  return lookupResp.data[0].translations.map(t => t.normalizedTarget)
+  return lookupResp.data[0].language
 }
 
 export const translate = async (text, from, to) => {
@@ -34,7 +33,7 @@ export const translate = async (text, from, to) => {
     url: 'translate',
     method: 'post',
     headers: {
-      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      'Ocp-Apim-Subscription-Key': BING_TOKEN,
       'Content-type': 'application/json',
       'X-ClientTraceId': v4()
     },
@@ -50,4 +49,28 @@ export const translate = async (text, from, to) => {
   })
 
   return lookupResp.data[0].translations[0].text
+}
+
+export const lookup = async (term, from, to) => {
+  const lookupResp = await axios({
+    baseURL: endpoint,
+    url: 'dictionary/lookup',
+    method: 'post',
+    headers: {
+      'Ocp-Apim-Subscription-Key': BING_TOKEN,
+      'Content-type': 'application/json',
+      'X-ClientTraceId': v4()
+    },
+    params: {
+      'api-version': '3.0',
+      'from': from,
+      'to': to
+    },
+    data: [{
+      'text': term
+    }],
+    responseType: 'json'
+  })
+
+  return lookupResp.data[0].translations.map(t => t.normalizedTarget)
 }

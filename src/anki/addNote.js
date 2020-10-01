@@ -2,16 +2,19 @@ import got from 'got'
 
 export const addNote = async (endpoint, deckName, fields) => {
     const {
-        word,
+        term,
         def,
-        part,
+        region,
+        pos,
+        gram,
+        hint,
         phonUK,
         phonUS,
         urlUK,
         urlUS,
         examples,
-        synonyms,
         translations,
+        meanings,
     } = fields
 
     const data = {
@@ -22,15 +25,15 @@ export const addNote = async (endpoint, deckName, fields) => {
                 'deckName': deckName,
                 'modelName': 'Vocabulary Builder',
                 'fields': {
-                    'word': word,
+                    'word': term,
                     'def': def,
-                    'part': part,
+                    'part': [pos, region, gram, hint].filter(i => i).join(' '),
                     'phon_uk': phonUK,
                     'phon_us': phonUS,
                     'ex1': examples[0],
                     'ex2': examples[1],
                     'ex3': examples[2],
-                    'syns': synonyms.join(', '),
+                    'syns': meanings.join(', '),
                     'trans': translations.join(', '),
                 },
                 'options': {
@@ -40,14 +43,14 @@ export const addNote = async (endpoint, deckName, fields) => {
                 'audio': [
                     {
                         'url': urlUK,
-                        'filename': `vocabulary-uk-${part}-${word}.mp3`,
+                        'filename': `vocabulary-uk-${pos}-${term}.mp3`,
                         'fields': [
                             'sound_uk'
                         ]
                     },
                     {
                         'url': urlUS,
-                        'filename': `vocabulary-us-${part}-${word}.mp3`,
+                        'filename': `vocabulary-us-${pos}-${term}.mp3`,
                         'fields': [
                             'sound_us'
                         ]
@@ -57,7 +60,6 @@ export const addNote = async (endpoint, deckName, fields) => {
         }
     }
 
-    // https://github.com/FooSoft/anki-connect/blob/master/actions/notes.md
     const { body } = await got.post(endpoint, {
         json: data,
         responseType: 'json'
