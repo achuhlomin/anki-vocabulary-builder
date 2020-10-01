@@ -114,10 +114,18 @@ const onMessageHandler = async (ctx) => {
     } = cambridgeDataByPos
 
     const yandexData = await yandexLookup(cambridgeTerm, 'en', STUDENT_LANG)
-    const yandexMeanings = yandexData[pos]?.meanings || []
-    const translations = yandexData[pos]?.translations || []
+    const yandexPoses = yandexData[pos] ? [pos] : Object.keys(yandexData)
+    const yandexMeanings = []
+    const yandexTranslations = []
 
-    const meanings = _.without(yandexMeanings, cambridgeTerm)
+    yandexPoses.forEach((yandexPos) => {
+      const yandexDataByPos = yandexData[yandexPos];
+      yandexMeanings.push(...yandexDataByPos.meanings)
+      yandexTranslations.push(...yandexDataByPos.translations)
+    })
+
+    const meanings = _.union(_.without(yandexMeanings, cambridgeTerm))
+    const translations = _.union(_.without(yandexTranslations, cambridgeTerm))
     const pronUrl = urlUK ? urlUK : urlUS
 
     if (pronUrl) {
@@ -132,7 +140,7 @@ const onMessageHandler = async (ctx) => {
       gram,
       hint,
       phon: phonUK ? phonUK : phonUS,
-      translations,
+      translations: yandexTranslations,
       meanings,
     })
 
