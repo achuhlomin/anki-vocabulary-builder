@@ -1,9 +1,9 @@
 import Telegraf from 'telegraf'
 import util from 'util'
 import childProcess from 'child_process'
-import _ from 'lodash'
 import Markup from 'telegraf/markup.js'
-import {translate as bingTranslate} from './src/translator/bing.js'
+import {detect as bingDetect} from './src/translator/bing.js'
+import {translate as googleTranslate} from './src/translator/google.js'
 import {lookup as cambridgeLookup} from './src/translator/cambridge.js'
 import {lookup as yandexLookup} from './src/translator/yandex.js'
 import {addNote} from './src/anki/addNote.js'
@@ -42,7 +42,13 @@ const getConnect = async (ctx) => {
 }
 
 const getTerm = async (text) => {
-  const translation = await bingTranslate(text, STUDENT_LANG, 'en')
+  const lang = await bingDetect(text)
+
+  if (lang === 'en') {
+    return text;
+  }
+
+  const translation = await googleTranslate(text, STUDENT_LANG, 'en')
 
   return translation.toLowerCase()
 }
@@ -78,105 +84,140 @@ const onSyncHandler = async (ctx) => {
   }
 }
 
-const getDefinitionMsg = ({ term, def, region, phon, translations, meanings, pos, gram, hint }) => {
+const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
   const part = [pos, region, gram, hint].filter(i => i).join(' ')
   const _phon = phon ? ` ${phon}` : ''
-  const _def = `${term}${_phon} — ${def}. ${part}`
-  const _meanings = meanings && meanings.length ? `\n\nSee also: ${meanings.join(', ')}` : ''
-  const _translations = `\n\n<i>${translations.join(', ')}</i>`
+  const _def = `${headword}${_phon} — ${def}. ${part}`
 
-  return `${_def}${_translations}${_meanings}`
+  return `${_def}`
 }
 
-const handleMessage = async (ctx, next) => {
-  await ctx.replyWithChatAction('typing')
+const replyDefinitions = async (ctx, definitions, more) => {
+  for(let i = 0; i < definitions.length; i++) {
+    const {
+      headword,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+    } = definitions[i]
 
-  const term = next ? next.term : await getTerm(ctx.message.text);
-  const newPosition = next ? next.position : [0, 0];
-  const cambridgeResult = await cambridgeLookup(term, newPosition);
+    const definitionMsg = getDefinitionMsg({
+      headword,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phon: phonUK ? phonUK : phonUS,
+    })
 
-  if (!cambridgeResult) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
+    const buttons = [
+      Markup.callbackButton('Add', 'add'),
+    ]
 
-  const {data: cambridgeData, position} = cambridgeResult
+    const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
 
-  const {
-    term: cambridgeTerm,
-    def,
-    region,
-    pos,
-    gram,
-    hint,
-    phonUK,
-    phonUS,
-    urlUK,
-    urlUS,
-    examples,
-  } = cambridgeData
+    const reply = await ctx.reply(definitionMsg, extra)
 
-  const yandexData = await yandexLookup(cambridgeTerm, 'en', STUDENT_LANG)
-  const yandexPoses = yandexData[pos] ? [pos] : Object.keys(yandexData)
-  const yandexMeanings = []
-  const yandexTranslations = []
+    cache[reply.message_id] = {
+      headword,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+      more,
+    }
+  }
+}
 
-  yandexPoses.forEach((yandexPos) => {
-    const yandexDataByPos = yandexData[yandexPos];
-    yandexMeanings.push(...yandexDataByPos.meanings)
-    yandexTranslations.push(...yandexDataByPos.translations)
+const formatWithPos = (more, attr) => {
+  let chunks = [];
+
+  Object.keys(more).forEach((pos) => {
+    const items = more[pos][attr]
+
+    if (items.length) {
+      chunks.push(`${pos}: ${items.join(', ')}`)
+    }
   })
 
-  const meanings = _.union(_.without(yandexMeanings, cambridgeTerm))
-  const translations = _.union(_.without(yandexTranslations, cambridgeTerm))
-  const pronUrl = urlUK ? urlUK : urlUS
+  return chunks.join('. ')
+}
 
-  if (pronUrl) {
-    await ctx.replyWithVoice({filename: pronUrl, url: pronUrl})
-  }
+const formatWithoutPos = (more, attr) => {
+  let chunks = [];
 
-  const definitionMsg = getDefinitionMsg({
-    term: cambridgeTerm,
-    def,
-    region,
-    pos,
-    gram,
-    hint,
-    phon: phonUK ? phonUK : phonUS,
-    translations: yandexTranslations,
-    meanings,
+  Object.keys(more).forEach((pos) => {
+    const items = more[pos][attr]
+
+    if (items.length) {
+      chunks.push(items.join(', '))
+    }
   })
 
-  const buttons = [
-    Markup.callbackButton('Add', 'add'),
-  ]
+  return chunks.join(', ')
+}
 
-  if (position) {
-    buttons.push(Markup.callbackButton('Next', 'next'))
-  }
+const getMoreMsg = ({translations, meanings}) => {
+  const _translations = translations && translations.length ? `<i>${translations}</i>` : ''
+  const _meanings = meanings && meanings.length ? `\n\nSee also: ${meanings}` : ''
 
-  const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
+  return `${_translations}${_meanings}`
+}
 
-  const result = await ctx.reply(definitionMsg, extra)
+const replyMore = async (ctx, more) => {
+  const translations = formatWithPos(more, 'translations')
+  const meanings = formatWithoutPos(more, 'meanings')
 
-  cache[result.message_id] = {
-    term: cambridgeTerm,
-    def,
-    region,
-    pos,
-    gram,
-    hint,
-    phonUK,
-    phonUS,
-    urlUK,
-    urlUS,
-    examples,
+  const moreMsg = getMoreMsg({
     translations,
     meanings,
-    position,
+  });
+
+  await ctx.reply(moreMsg, {parse_mode: 'HTML'})
+}
+
+const replyVoices = async (ctx, urlUK, urlUS) => {
+  if (urlUK) {
+    await ctx.replyWithVoice({filename: urlUK, url: urlUK})
+  }
+
+  if (urlUS) {
+    await ctx.replyWithVoice({filename: urlUS, url: urlUS})
   }
 }
 
 const onMessageHandler = async (ctx) => {
   try {
-    await handleMessage(ctx)
+    await ctx.replyWithChatAction('typing')
+
+    const term = await getTerm(ctx.message.text);
+    const definitions = await cambridgeLookup(term);
+    const definition = definitions[0]
+
+    if (definition) {
+      const {headword, urlUK, urlUS} = definition;
+      const more = await yandexLookup(headword, 'en', STUDENT_LANG)
+
+      await replyDefinitions(ctx, definitions.reverse(), more);
+      await replyVoices(ctx, urlUK, urlUS)
+      await replyMore(ctx, more)
+    } else {
+      await ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
+    }
   } catch (e) {
     console.error(e)
 
@@ -208,7 +249,39 @@ const onAddHandler = async (ctx) => {
       )
     }
 
-    const {error} = await addNote(endpoint, deckName, data)
+    const {
+      headword,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+      more,
+    } = data;
+
+    const translations = formatWithPos(more, 'translations')
+    const meanings = formatWithoutPos(more, 'meanings')
+
+    const {error} = await addNote(endpoint, deckName, {
+      headword,
+      def,
+      region,
+      pos,
+      gram,
+      hint,
+      phonUK,
+      phonUS,
+      urlUK,
+      urlUS,
+      examples,
+      translations,
+      meanings,
+    })
 
     if (error) {
       await ctx.answerCbQuery()
@@ -221,8 +294,6 @@ const onAddHandler = async (ctx) => {
     const syncAfter = await sync(endpoint)
 
     await ctx.answerCbQuery()
-
-    const { term } = data;
 
     await ctx.reply(
       `"${term}" added successfully! 👍`
@@ -240,35 +311,11 @@ const onAddHandler = async (ctx) => {
   }
 }
 
-const onNextHandler = async (ctx) => {
-  try {
-    const data = cache[ctx.update.callback_query.message.message_id]
-
-    if (!data) {
-      await ctx.answerCbQuery()
-
-      throw new Error(
-        `Failure! Add persistent cache 💩`
-      )
-    }
-
-    const { term, position } = data;
-
-    await handleMessage(ctx, { term, position })
-  } catch (e) {
-    console.error(e)
-
-    return ctx.reply(e.message)
-  }
-}
-
-
 bot.start(onStartHandler)
 bot.help(onHelpHandler)
 bot.command('sync', onSyncHandler)
 bot.on('message', onMessageHandler)
 bot.action('add', onAddHandler)
-bot.action('next', onNextHandler)
 
 await bot.launch()
 

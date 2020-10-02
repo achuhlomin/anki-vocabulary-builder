@@ -2,7 +2,7 @@ import got from 'got'
 
 export const addNote = async (endpoint, deckName, fields) => {
     const {
-        term,
+        headword,
         def,
         region,
         pos,
@@ -25,7 +25,7 @@ export const addNote = async (endpoint, deckName, fields) => {
                 'deckName': deckName,
                 'modelName': 'Vocabulary Builder',
                 'fields': {
-                    'word': term,
+                    'word': headword,
                     'def': def,
                     'part': [pos, region, gram, hint].filter(i => i).join(' '),
                     'phon_uk': phonUK,

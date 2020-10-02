@@ -35,9 +35,8 @@ export const lookup = async (term, from, to, inner = false) => {
     }
 
     acc[pos] = {
-      term: text,
       translations: _.compact(translations),
-      meanings: _.compact(_.union(_.flattenDeep(backwardTranslations), _.flattenDeep(meanings))),
+      meanings: _.without(_.compact(_.union(_.flattenDeep(backwardTranslations), _.flattenDeep(meanings))), term),
     };
 
     return acc
