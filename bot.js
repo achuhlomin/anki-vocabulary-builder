@@ -215,8 +215,11 @@ const replyPivot = async (ctx, definition, alternatives, info) => {
 
   const buttons = [
     Markup.callbackButton('Add', 'add'),
-    Markup.callbackButton('More', 'more'),
   ]
+
+  if (alternatives.length) {
+    buttons.push(Markup.callbackButton('More', 'more'))
+  }
 
   const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
   const reply = await ctx.reply(pivotMsg, extra)
