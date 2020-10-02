@@ -15,15 +15,15 @@ const formatDef = (def, {word}) => {
   return formattedDef
 }
 
-const getEntry = async (term) => {
+const getEntries = async (term) => {
 
   try {
     const htmlUrl = `https://${cambridgeDomain}/search/english/direct/?q=${encodeURI(term)}`
     const dom = await JSDOM.fromURL(htmlUrl)
-    const $entry = dom.window.document.querySelector('.entry')
+    const entries = dom.window.document.querySelectorAll('.entry')
 
     return {
-      $entry,
+      entries,
       dom,
     }
   } catch (e) {
@@ -32,17 +32,17 @@ const getEntry = async (term) => {
 
 }
 
-const getSafeEntry = async (term) => {
-  const result = await getEntry(term)
+const getSafeEntries = async (term) => {
+  const result = await getEntries(term)
 
   if (!result) {
-    return null;
+    return [];
   }
 
-  const {$entry, dom} = result;
+  const {entries, dom} = result;
 
-  if ($entry) {
-    return $entry
+  if (entries.length) {
+    return entries
   }
 
   const newTerm = dom.window.document.querySelector('.x .lbt span')?.textContent
@@ -51,42 +51,65 @@ const getSafeEntry = async (term) => {
     return null
   }
 
-  const newResult = await getEntry(newTerm)
+  const newResult = await getEntries(newTerm)
 
-  if (!newResult || newResult.$entry) {
-    return null
+  if (!newResult) {
+    return []
   }
 
-  return newResult.$entry
+  return newResult.entries
 }
 
-export const lookup = async (term) => {
-  const $entry = await getSafeEntry(term)
+export const lookup = async (term, [ entryPosition, itemPosition ]) => {
+  const definitions = [];
+  const entries = await getSafeEntries(term)
+  const entry = entries[Math.min(entryPosition, entries.length)]
 
-  if (!$entry) {
+  if (!entry) {
     return null;
   }
 
-  const word = $entry.querySelector('.headword').textContent
-  const def = $entry.querySelector('.def').textContent
-  const region = $entry.querySelector('.region')?.textContent
-  const pos = $entry.querySelector('.pos').textContent
-  const gram = $entry.querySelector('.gram')?.textContent
-  const hint = $entry.querySelector('.var')?.textContent
+  const items = entry.querySelectorAll('.pr.dsense')
+  const item = items[Math.min(itemPosition, items.length)]
 
-  const $uk = $entry.querySelector('.uk')
+  if (!item) {
+    return null;
+  }
+
+  const word = entry.querySelector('.headword').textContent
+  const pos = entry.querySelector('.pos').textContent
+  const hint = entry.querySelector('.var')?.textContent
+  const region = entry.querySelector('.region')?.textContent
+
+  const $uk = entry.querySelector('.uk')
   const urlUK = $uk?.querySelector(`source[type='audio/mpeg']`).getAttribute('src')
   const phonUK = $uk?.querySelector('.pron')?.textContent
 
-  const $us = $entry.querySelector('.us')
+  const $us = entry.querySelector('.us')
   const urlUS = $us?.querySelector(`source[type='audio/mpeg']`).getAttribute('src')
   const phonUS = $us?.querySelector('.pron')?.textContent
 
-  const $examples = $entry.querySelectorAll('.examp')
+  const def = item.querySelector('.def').textContent
+  const gram = item.querySelector('.dgram')?.textContent
+
+  const $examples = item.querySelectorAll('.examp')
   const examples = Array.prototype.map.call($examples, node => node.textContent)
 
+  const nextAvailable = entryPosition + 1 < entries.length || itemPosition + 1< items.length
+
+  let nextEntry = entryPosition
+  let nextItem = itemPosition
+
+  if (itemPosition + 1 === items.length && entryPosition + 1 < entries.length) {
+    nextEntry = entryPosition + 1
+    nextItem = 0
+  } else if (itemPosition + 1 < items.length) {
+    nextItem = itemPosition + 1
+  }
+
   return {
-    [pos]: {
+    position: nextAvailable ? [nextEntry, nextItem] : false,
+    data: {
       term: word,
       def: formatDef(def, {word}),
       region,
@@ -98,6 +121,6 @@ export const lookup = async (term) => {
       urlUK: urlUK ? `https://${cambridgeDomain}${urlUK}` : null,
       urlUS: urlUS ? `https://${cambridgeDomain}${urlUS}`: null,
       examples,
-    }
+    },
   }
 }

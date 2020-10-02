@@ -88,84 +88,95 @@ const getDefinitionMsg = ({ term, def, region, phon, translations, meanings, pos
   return `${_def}${_translations}${_meanings}`
 }
 
+const handleMessage = async (ctx, next) => {
+  await ctx.replyWithChatAction('typing')
+
+  const term = next ? next.term : await getTerm(ctx.message.text);
+  const newPosition = next ? next.position : [0, 0];
+  const cambridgeResult = await cambridgeLookup(term, newPosition);
+
+  if (!cambridgeResult) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
+
+  const {data: cambridgeData, position} = cambridgeResult
+
+  const {
+    term: cambridgeTerm,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phonUK,
+    phonUS,
+    urlUK,
+    urlUS,
+    examples,
+  } = cambridgeData
+
+  const yandexData = await yandexLookup(cambridgeTerm, 'en', STUDENT_LANG)
+  const yandexPoses = yandexData[pos] ? [pos] : Object.keys(yandexData)
+  const yandexMeanings = []
+  const yandexTranslations = []
+
+  yandexPoses.forEach((yandexPos) => {
+    const yandexDataByPos = yandexData[yandexPos];
+    yandexMeanings.push(...yandexDataByPos.meanings)
+    yandexTranslations.push(...yandexDataByPos.translations)
+  })
+
+  const meanings = _.union(_.without(yandexMeanings, cambridgeTerm))
+  const translations = _.union(_.without(yandexTranslations, cambridgeTerm))
+  const pronUrl = urlUK ? urlUK : urlUS
+
+  if (pronUrl) {
+    await ctx.replyWithVoice({filename: pronUrl, url: pronUrl})
+  }
+
+  const definitionMsg = getDefinitionMsg({
+    term: cambridgeTerm,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phon: phonUK ? phonUK : phonUS,
+    translations: yandexTranslations,
+    meanings,
+  })
+
+  const buttons = [
+    Markup.callbackButton('Add', 'add'),
+  ]
+
+  if (position) {
+    buttons.push(Markup.callbackButton('Next', 'next'))
+  }
+
+  const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
+
+  const result = await ctx.reply(definitionMsg, extra)
+
+  cache[result.message_id] = {
+    term: cambridgeTerm,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phonUK,
+    phonUS,
+    urlUK,
+    urlUS,
+    examples,
+    translations,
+    meanings,
+    position,
+  }
+}
+
 const onMessageHandler = async (ctx) => {
   try {
-    await ctx.replyWithChatAction('typing')
-
-    const term = await getTerm(ctx.message.text);
-    const cambridgeData = await cambridgeLookup(term);
-
-    if (!cambridgeData) return ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
-
-    const pos = Object.keys(cambridgeData)[0]
-    const cambridgeDataByPos = cambridgeData[pos]
-
-    const {
-      term: cambridgeTerm,
-      def,
-      region,
-      gram,
-      hint,
-      phonUK,
-      phonUS,
-      urlUK,
-      urlUS,
-      examples,
-    } = cambridgeDataByPos
-
-    const yandexData = await yandexLookup(cambridgeTerm, 'en', STUDENT_LANG)
-    const yandexPoses = yandexData[pos] ? [pos] : Object.keys(yandexData)
-    const yandexMeanings = []
-    const yandexTranslations = []
-
-    yandexPoses.forEach((yandexPos) => {
-      const yandexDataByPos = yandexData[yandexPos];
-      yandexMeanings.push(...yandexDataByPos.meanings)
-      yandexTranslations.push(...yandexDataByPos.translations)
-    })
-
-    const meanings = _.union(_.without(yandexMeanings, cambridgeTerm))
-    const translations = _.union(_.without(yandexTranslations, cambridgeTerm))
-    const pronUrl = urlUK ? urlUK : urlUS
-
-    if (pronUrl) {
-      await ctx.replyWithVoice({filename: pronUrl, url: pronUrl})
-    }
-
-    const definitionMsg = getDefinitionMsg({
-      term: cambridgeTerm,
-      def,
-      region,
-      pos,
-      gram,
-      hint,
-      phon: phonUK ? phonUK : phonUS,
-      translations: yandexTranslations,
-      meanings,
-    })
-
-    const result = await ctx.reply(definitionMsg,
-      Markup.inlineKeyboard([
-        Markup.callbackButton('Add', 'add'),
-        Markup.callbackButton('Cancel', 'cancel')
-      ]).extra({parse_mode: 'HTML'})
-    )
-
-    cache[result.message_id] = {
-      term: cambridgeTerm,
-      def,
-      region,
-      pos,
-      gram,
-      hint,
-      phonUK,
-      phonUS,
-      urlUK,
-      urlUS,
-      examples,
-      translations,
-      meanings,
-    }
+    await handleMessage(ctx)
   } catch (e) {
     console.error(e)
 
@@ -175,16 +186,17 @@ const onMessageHandler = async (ctx) => {
 
 const onAddHandler = async (ctx) => {
   try {
-    const {endpoint, deckName} = await getConnect(ctx)
-    const fields = cache[ctx.update.callback_query.message.message_id]
+    const data = cache[ctx.update.callback_query.message.message_id]
 
-    if (!fields) {
+    if (!data) {
       await ctx.answerCbQuery()
 
       throw new Error(
         `Failure! Add persistent cache 💩`
       )
     }
+
+    const {endpoint, deckName} = await getConnect(ctx)
 
     const syncBefore = await sync(endpoint)
 
@@ -196,7 +208,7 @@ const onAddHandler = async (ctx) => {
       )
     }
 
-    const {error} = await addNote(endpoint, deckName, fields)
+    const {error} = await addNote(endpoint, deckName, data)
 
     if (error) {
       await ctx.answerCbQuery()
@@ -209,9 +221,8 @@ const onAddHandler = async (ctx) => {
     const syncAfter = await sync(endpoint)
 
     await ctx.answerCbQuery()
-    await ctx.editMessageReplyMarkup({inline_keyboard: []})
 
-    const { term } = fields;
+    const { term } = data;
 
     await ctx.reply(
       `"${term}" added successfully! 👍`
@@ -229,12 +240,21 @@ const onAddHandler = async (ctx) => {
   }
 }
 
-const onCancelHandler = async (ctx) => {
+const onNextHandler = async (ctx) => {
   try {
-    await ctx.editMessageReplyMarkup({inline_keyboard: []})
-    await ctx.answerCbQuery(
-      `Cancelled 🌊`
-    )
+    const data = cache[ctx.update.callback_query.message.message_id]
+
+    if (!data) {
+      await ctx.answerCbQuery()
+
+      throw new Error(
+        `Failure! Add persistent cache 💩`
+      )
+    }
+
+    const { term, position } = data;
+
+    await handleMessage(ctx, { term, position })
   } catch (e) {
     console.error(e)
 
@@ -242,12 +262,13 @@ const onCancelHandler = async (ctx) => {
   }
 }
 
+
 bot.start(onStartHandler)
 bot.help(onHelpHandler)
 bot.command('sync', onSyncHandler)
 bot.on('message', onMessageHandler)
 bot.action('add', onAddHandler)
-bot.action('cancel', onCancelHandler)
+bot.action('next', onNextHandler)
 
 await bot.launch()
 
