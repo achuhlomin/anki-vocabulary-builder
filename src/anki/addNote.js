@@ -33,8 +33,8 @@ export const addNote = async (endpoint, deckName, fields) => {
                     'ex1': examples[0],
                     'ex2': examples[1],
                     'ex3': examples[2],
-                    'syns': meanings.join(', '),
-                    'trans': translations.join(', '),
+                    'syns': meanings,
+                    'trans': translations,
                 },
                 'options': {
                     'allowDuplicate': false,
@@ -43,14 +43,14 @@ export const addNote = async (endpoint, deckName, fields) => {
                 'audio': [
                     {
                         'url': urlUK,
-                        'filename': `vocabulary-uk-${pos}-${term}.mp3`,
+                        'filename': `vocabulary-uk-${pos}-${headword}.mp3`,
                         'fields': [
                             'sound_uk'
                         ]
                     },
                     {
                         'url': urlUS,
-                        'filename': `vocabulary-us-${pos}-${term}.mp3`,
+                        'filename': `vocabulary-us-${pos}-${headword}.mp3`,
                         'fields': [
                             'sound_us'
                         ]

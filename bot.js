@@ -84,6 +84,34 @@ const onSyncHandler = async (ctx) => {
   }
 }
 
+const formatWithPos = (info, attr) => {
+  let chunks = [];
+
+  Object.keys(info).forEach((pos) => {
+    const items = info[pos][attr]
+
+    if (items.length) {
+      chunks.push(`${pos}: ${items.join(', ')}`)
+    }
+  })
+
+  return chunks.join('. ')
+}
+
+const formatWithoutPos = (info, attr) => {
+  let chunks = [];
+
+  Object.keys(info).forEach((pos) => {
+    const items = info[pos][attr]
+
+    if (items.length) {
+      chunks.push(items.join(', '))
+    }
+  })
+
+  return chunks.join(', ')
+}
+
 const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
   const part = [pos, region, gram, hint].filter(i => i).join(' ')
   const _phon = phon ? ` ${phon}` : ''
@@ -92,7 +120,7 @@ const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
   return `${_def}`
 }
 
-const replyDefinitions = async (ctx, definitions, more) => {
+const replyDefinitions = async (ctx, definitions, info) => {
   for(let i = 0; i < definitions.length; i++) {
     const {
       headword,
@@ -138,65 +166,83 @@ const replyDefinitions = async (ctx, definitions, more) => {
       urlUK,
       urlUS,
       examples,
-      more,
+      info,
     }
   }
 }
 
-const formatWithPos = (more, attr) => {
-  let chunks = [];
-
-  Object.keys(more).forEach((pos) => {
-    const items = more[pos][attr]
-
-    if (items.length) {
-      chunks.push(`${pos}: ${items.join(', ')}`)
-    }
-  })
-
-  return chunks.join('. ')
-}
-
-const formatWithoutPos = (more, attr) => {
-  let chunks = [];
-
-  Object.keys(more).forEach((pos) => {
-    const items = more[pos][attr]
-
-    if (items.length) {
-      chunks.push(items.join(', '))
-    }
-  })
-
-  return chunks.join(', ')
-}
-
-const getMoreMsg = ({translations, meanings}) => {
+const getInfoMsg = ({translations, meanings}) => {
   const _translations = translations && translations.length ? `<i>${translations}</i>` : ''
   const _meanings = meanings && meanings.length ? `\n\nSee also: ${meanings}` : ''
 
   return `${_translations}${_meanings}`
 }
 
-const replyMore = async (ctx, more) => {
-  const translations = formatWithPos(more, 'translations')
-  const meanings = formatWithoutPos(more, 'meanings')
+const replyPivot = async (ctx, definition, alternatives, info) => {
+  const translations = formatWithPos(info, 'translations')
+  const meanings = formatWithoutPos(info, 'meanings')
 
-  const moreMsg = getMoreMsg({
+  const {
+    headword,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phonUK,
+    phonUS,
+    urlUK,
+    urlUS,
+    examples,
+  } = definition
+
+  const definitionMsg = getDefinitionMsg({
+    headword,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phon: phonUK ? phonUK : phonUS,
+  })
+
+  const infoMsg = getInfoMsg({
     translations,
     meanings,
   });
 
-  await ctx.reply(moreMsg, {parse_mode: 'HTML'})
+  const pivotMsg = `${definitionMsg}\n\n${infoMsg}`
+
+  const buttons = [
+    Markup.callbackButton('Add', 'add'),
+    Markup.callbackButton('More', 'more'),
+  ]
+
+  const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
+  const reply = await ctx.reply(pivotMsg, extra)
+
+  cache[reply.message_id] = {
+    headword,
+    def,
+    region,
+    pos,
+    gram,
+    hint,
+    phonUK,
+    phonUS,
+    urlUK,
+    urlUS,
+    examples,
+    info,
+    alternatives,
+  }
 }
 
 const replyVoices = async (ctx, urlUK, urlUS) => {
-  if (urlUK) {
-    await ctx.replyWithVoice({filename: urlUK, url: urlUK})
-  }
+  const pronUrl = urlUK ? urlUK : urlUS
 
-  if (urlUS) {
-    await ctx.replyWithVoice({filename: urlUS, url: urlUS})
+  if (pronUrl) {
+    await ctx.replyWithVoice({filename: pronUrl, url: pronUrl})
   }
 }
 
@@ -206,18 +252,40 @@ const onMessageHandler = async (ctx) => {
 
     const term = await getTerm(ctx.message.text);
     const definitions = await cambridgeLookup(term);
-    const definition = definitions[0]
+    const [ definition, ...alternatives ] = definitions
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const more = await yandexLookup(headword, 'en', STUDENT_LANG)
+      const info = await yandexLookup(headword, 'en', STUDENT_LANG)
 
-      await replyDefinitions(ctx, definitions.reverse(), more);
       await replyVoices(ctx, urlUK, urlUS)
-      await replyMore(ctx, more)
+      await replyPivot(ctx, definition, alternatives, info)
     } else {
       await ctx.reply(`"${term}" isn't found. Check availability of this one in "Cambridge Dictionary" 🤷🏼‍♀️`)
     }
+  } catch (e) {
+    console.error(e)
+
+    return ctx.reply(e.message)
+  }
+}
+
+const onMoreHandler = async (ctx) => {
+  try {
+    const data = cache[ctx.update.callback_query.message.message_id]
+
+    if (!data) {
+      await ctx.answerCbQuery()
+
+      throw new Error(
+        `Failure! Add persistent cache 💩`
+      )
+    }
+
+    const { alternatives, info } = data
+
+    await replyDefinitions(ctx, alternatives.reverse(), info);
+    await ctx.answerCbQuery()
   } catch (e) {
     console.error(e)
 
@@ -261,11 +329,11 @@ const onAddHandler = async (ctx) => {
       urlUK,
       urlUS,
       examples,
-      more,
+      info,
     } = data;
 
-    const translations = formatWithPos(more, 'translations')
-    const meanings = formatWithoutPos(more, 'meanings')
+    const translations = formatWithPos(info, 'translations')
+    const meanings = formatWithoutPos(info, 'meanings')
 
     const {error} = await addNote(endpoint, deckName, {
       headword,
@@ -296,12 +364,12 @@ const onAddHandler = async (ctx) => {
     await ctx.answerCbQuery()
 
     await ctx.reply(
-      `"${term}" added successfully! 👍`
+      `"${headword}" added successfully! 👍`
     )
 
     if (!syncAfter || syncAfter.error) {
       ctx.reply(
-        `"${term}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
+        `"${headword}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
       )
     }
   } catch (e) {
@@ -315,6 +383,7 @@ bot.start(onStartHandler)
 bot.help(onHelpHandler)
 bot.command('sync', onSyncHandler)
 bot.on('message', onMessageHandler)
+bot.action('more', onMoreHandler)
 bot.action('add', onAddHandler)
 
 await bot.launch()
