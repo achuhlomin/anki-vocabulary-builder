@@ -13,8 +13,8 @@ export const addNote = async (endpoint, deckName, fields) => {
         urlUK,
         urlUS,
         examples,
-        translations,
         meanings,
+        translations,
     } = fields
 
     const data = {

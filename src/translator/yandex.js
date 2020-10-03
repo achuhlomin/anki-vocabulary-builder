@@ -1,5 +1,4 @@
 import got from 'got'
-import _ from 'lodash'
 
 const YANDEX_TOKEN = process.env.YANDEX_TOKEN;
 
@@ -14,31 +13,45 @@ export const lookup = async (term, from, to, inner = false) => {
   })
 
   const defs = JSON.parse(body).def
+  const meanings = []
+  const translations = []
 
-  return await defs.reduce(async (acc, {pos, text, tr = []}) => {
-    const translations = []
-    const backwardTranslations = []
-    const meanings = []
+  for (let i = 0; i < defs.length; i++) {
+    const {pos, tr = []} = defs[i]
 
-    for(let i=0; i < tr.length; i++) {
-      const {text: translation, mean = []} = tr[i]
+    for(let j=0; j < tr.length; j++) {
+      const {text: translation, mean = []} = tr[j]
 
       if (!inner) {
         const data = await lookup(translation, to, from, true)
 
-        backwardTranslations.push(data[pos]?.translations)
+        if (data[pos]?.translations) {
+          data[pos]?.translations.forEach((translation) => {
+            meanings.push({
+              pos,
+              term: translation
+            })
+          })
+        }
       }
 
-      meanings.push(mean.map(({text: meaning}) => meaning))
+      if (translation) {
+        translations.push({
+          pos,
+          term: translation
+        })
+      }
 
-      translations.push(translation)
+      mean.forEach(({text: meaning}) => {
+        if (meaning) {
+          meanings.push(meaning)
+        }
+      })
     }
+  }
 
-    acc[pos] = {
-      translations: _.compact(translations),
-      meanings: _.without(_.compact(_.union(_.flattenDeep(backwardTranslations), _.flattenDeep(meanings))), term),
-    };
-
-    return acc
-  }, {})
+  return {
+    meanings,
+    translations,
+  }
 }
