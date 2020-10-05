@@ -38,7 +38,7 @@ export const lookup = async (term, from, to, inner = false) => {
       if (translation) {
         translations.push({
           pos,
-          term: translation
+          term: translation,
         })
       }
 

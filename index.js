@@ -3,7 +3,6 @@ import util from 'util'
 import childProcess from 'child_process'
 import _ from 'lodash'
 import Markup from 'telegraf/markup.js'
-import {detect as bingDetect} from './src/translator/bing.js'
 import {lookup as cambridgeLookup} from './src/translator/cambridge.js'
 import {lookup as yandexLookup } from './src/translator/yandex.js'
 import {addNote} from './src/anki/addNote.js'
@@ -18,20 +17,21 @@ const bot = new Telegraf(BOT_TOKEN)
 const cache = {};
 
 const anki = {
-  andrewchuhlomin: {
+  369837507: {
     deckName: '8. Vocabulary Builder'
   },
 }
 
 const getConnect = async (ctx) => {
-  const {username} = await ctx.getChat();
-  const {stdout: ip} = await exec(`docker container inspect anki_${username} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
+  const {id} = await ctx.getChat();
+
+  const {stdout: ip} = await exec(`docker container inspect anki_${id} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
 
   if (!ip) {
     throw new Error(`Sorry! Your anki isn't registered.`)
   }
 
-  const customMeta = anki[username]
+  const customMeta = anki[id]
 
   return {
     endpoint: `http://${ip}:8765`,
@@ -40,15 +40,14 @@ const getConnect = async (ctx) => {
 }
 
 const getTerms = async (text) => {
-  const lang = await bingDetect(text)
+  const lookup = await yandexLookup(text, STUDENT_LANG, 'en')
+  const translations = lookup.translations.map(({ term }) => term)
 
-  if (lang === 'en') {
-    return [text];
+  if (translations.length) {
+    return translations
   }
 
-  const lookup = await yandexLookup(text, lang, 'en')
-
-  return lookup.translations.map(({ term }) => term)
+  return [text]
 }
 
 const onStartHandler = (ctx) => {
@@ -82,20 +81,26 @@ const onSyncHandler = async (ctx) => {
   }
 }
 
-const formatTranslations = (items) => {
+const formatTranslations = (items, {pos}) => {
   const chunks = [];
 
-  const groups = items.reduce((acc, { pos, term }) => {
-    if (acc[pos]) {
-      acc[pos].push(term)
+  const groups = items.reduce((acc, { pos: itemPos, term }) => {
+    if (acc[itemPos]) {
+      acc[itemPos].push(term)
     } else {
-      acc[pos] = [term]
+      acc[itemPos] = [term]
     }
 
     return acc
   }, {})
 
-  Object.keys(groups).forEach(pos => {
+  const poses = _.union([
+      pos,
+      ...Object.keys(groups),
+    ]
+  )
+
+  poses.forEach(pos => {
     const items = groups[pos]
 
     if (items.length) {
@@ -111,7 +116,7 @@ const formatMeanings = (meanings) => {
 }
 
 const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
-  const part = [pos, region, gram, hint].filter(i => i).join(' ')
+  const part = [pos, region, gram].filter(i => i).join(' ')
   const _phon = phon ? ` ${phon}` : ''
   const _def = `${headword}${_phon} — ${def}. ${part}`
 
@@ -210,7 +215,7 @@ const replyPivot = async (ctx, data) => {
 
   const infoMsg = getInfoMsg({
     meanings: formatMeanings(meanings),
-    translations: formatTranslations(translations),
+    translations: formatTranslations(translations, {pos}),
   });
 
   const pivotMsg = `${definitionMsg}\n\n${infoMsg}`
@@ -264,13 +269,9 @@ const lookups = async (terms, from, to) => {
     translationGroups.push(result.translations)
   }
 
-  const translations = _.chain(translationGroups).flatten().unionWith((a, b) => {
-    return a.pos === b.pos && a.term === b.term
-  }).value()
-
   return {
     meanings: _.flatten(meaningGroups),
-    translations,
+    translations: translationGroups[0] || [],
   };
 }
 
@@ -279,19 +280,17 @@ const onMessageHandler = async (ctx) => {
     await ctx.replyWithChatAction('typing')
 
     const terms = await getTerms(ctx.message.text)
-    const [term] = terms
-
-    if (!term) {
-      return await ctx.reply(`"${term}" isn't found. 🤷🏼‍♀`)
-    }
-
+    const [term, ...otherTerms] = terms
     const definitions = await cambridgeLookup(term)
     const [ definition, ...alternatives ] = definitions
 
     if (definition) {
-      const {urlUK, urlUS} = definition;
-      const { meanings, translations } = await lookups(terms, 'en', STUDENT_LANG)
-      const extraMeanings = _.chain(terms).union(meanings).without(term).value()
+      const {headword, urlUK, urlUS} = definition;
+      otherTerms.unshift(headword)
+
+      const updatedTerms = _.union(otherTerms)
+      const { meanings, translations } = await lookups(updatedTerms, 'en', STUDENT_LANG)
+      const extraMeanings = _.chain(updatedTerms).union(meanings).without(headword).value()
 
       await replyVoices(ctx, urlUK, urlUS)
 

@@ -27,7 +27,7 @@ export const addNote = async (endpoint, deckName, fields) => {
                 'fields': {
                     'word': headword,
                     'def': def,
-                    'part': [pos, region, gram, hint].filter(i => i).join(' '),
+                    'part': [pos, region, gram].filter(i => i).join(' '),
                     'phon_uk': phonUK,
                     'phon_us': phonUS,
                     'ex1': examples[0],
