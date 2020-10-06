@@ -39,15 +39,15 @@ const getConnect = async (ctx) => {
   }
 }
 
-const getTerms = async (text) => {
+const getTerm = async (text) => {
   const lookup = await yandexLookup(text, STUDENT_LANG, 'en')
   const translations = lookup.translations.map(({term}) => term)
 
   if (translations.length) {
-    return translations
+    return translations[0]
   }
 
-  return [text]
+  return text
 }
 
 const onStartHandler = (ctx) => {
@@ -251,45 +251,24 @@ const replyVoices = async (ctx, urlUK, urlUS) => {
   }
 }
 
-const lookups = async (terms, from, to) => {
-  const meaningGroups = []
-  const translationGroups = []
-
-  for (let i = 0; i < terms.length; i++) {
-    const term = terms[i]
-    const result = await yandexLookup(term, from, to)
-
-    meaningGroups.push(result.meanings)
-    translationGroups.push(result.translations)
-  }
-
-  return {
-    meanings: _.flatten(meaningGroups),
-    translations: translationGroups[0] || [],
-  };
-}
-
 const onMessageHandler = async (ctx) => {
   try {
     await ctx.replyWithChatAction('typing')
 
-    const terms = await getTerms(ctx.message.text)
-    const [term, ...otherTerms] = terms
+    const term = await getTerm(ctx.message.text)
     const definitions = await cambridgeLookup(term)
     const [definition, ...alternatives] = definitions
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const updatedTerms = _.union([headword], otherTerms)
-      const {meanings, translations} = await lookups(updatedTerms, 'en', STUDENT_LANG)
-      const extraMeanings = _.chain(updatedTerms).union(meanings).without(headword).value()
+      const {meanings, translations} = await yandexLookup(headword, 'en', STUDENT_LANG)
 
       await replyVoices(ctx, urlUK, urlUS)
 
       await replyPivot(ctx, {
         definition,
         alternatives,
-        meanings: extraMeanings,
+        meanings,
         translations,
       })
     } else {
@@ -315,6 +294,11 @@ const onMoreHandler = async (ctx) => {
     }
 
     const {alternatives, meanings, translations} = data
+
+    await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([
+        Markup.callbackButton('Add', 'add')
+      ]
+    ))
 
     await replyDefinitions(ctx, {
       definitions: alternatives,

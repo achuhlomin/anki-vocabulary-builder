@@ -1,6 +1,8 @@
 import got from 'got'
+import _ from 'lodash'
 
-const YANDEX_TOKEN = process.env.YANDEX_TOKEN;
+const YANDEX_TOKEN = process.env.YANDEX_TOKEN
+const ignoredPoses = ['foreign word']
 
 export const lookup = async (term, from, to, inner = false) => {
   const {body} = await got('api/v1/dicservice.json/lookup', {
@@ -15,6 +17,7 @@ export const lookup = async (term, from, to, inner = false) => {
   const defs = JSON.parse(body).def
   const meanings = []
   const translations = []
+  const backTranslations = []
 
   for (let i = 0; i < defs.length; i++) {
     const {pos, tr = []} = defs[i]
@@ -25,21 +28,18 @@ export const lookup = async (term, from, to, inner = false) => {
       if (!inner) {
         const data = await lookup(translation, to, from, true)
 
-        if (data[pos]?.translations) {
-          data[pos]?.translations.forEach((translation) => {
-            meanings.push({
-              pos,
-              term: translation
-            })
-          })
-        }
+        data.translations.forEach(({term: backTranslation}) => {
+          backTranslations.push(backTranslation)
+        })
       }
 
       if (translation) {
-        translations.push({
-          pos,
-          term: translation,
-        })
+        if (!ignoredPoses.includes(pos)) {
+          translations.push({
+            pos,
+            term: translation,
+          })
+        }
       }
 
       mean.forEach(({text: meaning}) => {
@@ -50,8 +50,16 @@ export const lookup = async (term, from, to, inner = false) => {
     }
   }
 
+  const relevantMeanings = backTranslations.slice(0, 32)
+
+  for (let i = 0; i < meanings.length; i++) {
+    if (relevantMeanings.length === 32) break
+
+    relevantMeanings.push(meanings[i])
+  }
+
   return {
-    meanings,
+    meanings: _.chain(relevantMeanings).union().without(term).value(),
     translations,
   }
 }

@@ -6,23 +6,17 @@
 
 <p style="font-size: 14px">
     {{#sound_uk}}
-    <span>
-        <span>{{sound_uk}}</span>
-
-        {{#phon_uk}}
-			<span>{{phon_uk}}</span>
-        {{/phon_uk}}
-    </span>
+    {{#phon_uk}}
+    <span>{{sound_uk}}</span>
+    <span>{{phon_uk}}</span>
+    {{/phon_uk}}
     {{/sound_uk}}
 
     {{#sound_us}}
-    <span>
-        <span>{{sound_us}}</span>
-
-        {{#phon_us}}
-            <span>{{phon_us}}</span>
-        {{/phon_us}}
-    </span>
+    {{#phon_us}}
+    <span>{{sound_us}}</span>
+    <span>{{phon_us}}</span>
+    {{/phon_us}}
     {{/sound_us}}
 </p>
 
@@ -31,21 +25,21 @@
     <li>{{ex1}}</li>
 
     {{#ex2}}
-        <li>{{ex2}}</li>
+    <li>{{ex2}}</li>
     {{/ex2}}
 
     {{#ex3}}
-        <li>{{ex3}}</li>
+    <li>{{ex3}}</li>
     {{/ex3}}
 </ul>
 {{/ex1}}
 
-{{#syns}}
-    <p style="font-size: 14px; color: #559955">{{syns}}</p>
-{{/syns}}
-
 {{#trans}}
-    <p style="font-size: 12px; color: lightgray">{{trans}}</p>
+<i style="font-size: 12px; color: grey">{{trans}}</i>
 {{/trans}}
+
+{{#syns}}
+<p style="font-size: 12px; color: #559955">{{syns}}</p>
+{{/syns}}
 
 <br/>
