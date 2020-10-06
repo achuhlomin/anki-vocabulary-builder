@@ -4,7 +4,7 @@ import childProcess from 'child_process'
 import _ from 'lodash'
 import Markup from 'telegraf/markup.js'
 import {lookup as cambridgeLookup} from './src/translator/cambridge.js'
-import {lookup as yandexLookup } from './src/translator/yandex.js'
+import {lookup as yandexLookup} from './src/translator/yandex.js'
 import {addNote} from './src/anki/addNote.js'
 import {sync} from './src/anki/sync.js'
 
@@ -41,7 +41,7 @@ const getConnect = async (ctx) => {
 
 const getTerms = async (text) => {
   const lookup = await yandexLookup(text, STUDENT_LANG, 'en')
-  const translations = lookup.translations.map(({ term }) => term)
+  const translations = lookup.translations.map(({term}) => term)
 
   if (translations.length) {
     return translations
@@ -84,7 +84,7 @@ const onSyncHandler = async (ctx) => {
 const formatTranslations = (items, {pos}) => {
   const chunks = [];
 
-  const groups = items.reduce((acc, { pos: itemPos, term }) => {
+  const groups = items.reduce((acc, {pos: itemPos, term}) => {
     if (acc[itemPos]) {
       acc[itemPos].push(term)
     } else {
@@ -94,16 +94,10 @@ const formatTranslations = (items, {pos}) => {
     return acc
   }, {})
 
-  const poses = _.union([
-      pos,
-      ...Object.keys(groups),
-    ]
-  )
-
-  poses.forEach(pos => {
+  _.union([pos], Object.keys(groups)).forEach(pos => {
     const items = groups[pos]
 
-    if (items.length) {
+    if (items?.length) {
       chunks.push(`${pos}: ${items.join(', ')}`)
     }
   })
@@ -115,7 +109,7 @@ const formatMeanings = (meanings) => {
   return meanings.join(', ')
 }
 
-const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
+const getDefinitionMsg = ({headword, def, region, phon, pos, gram, hint}) => {
   const part = [pos, region, gram].filter(i => i).join(' ')
   const _phon = phon ? ` ${phon}` : ''
   const _def = `${headword}${_phon} — ${def}. ${part}`
@@ -123,8 +117,8 @@ const getDefinitionMsg = ({ headword, def, region, phon, pos, gram, hint }) => {
   return `${_def}`
 }
 
-const replyDefinitions = async (ctx, { definitions, meanings, translations }) => {
-  for(let i = 0; i < definitions.length; i++) {
+const replyDefinitions = async (ctx, {definitions, meanings, translations}) => {
+  for (let i = 0; i < definitions.length; i++) {
     const {
       headword,
       def,
@@ -282,14 +276,12 @@ const onMessageHandler = async (ctx) => {
     const terms = await getTerms(ctx.message.text)
     const [term, ...otherTerms] = terms
     const definitions = await cambridgeLookup(term)
-    const [ definition, ...alternatives ] = definitions
+    const [definition, ...alternatives] = definitions
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      otherTerms.unshift(headword)
-
-      const updatedTerms = _.union(otherTerms)
-      const { meanings, translations } = await lookups(updatedTerms, 'en', STUDENT_LANG)
+      const updatedTerms = _.union([headword], otherTerms)
+      const {meanings, translations} = await lookups(updatedTerms, 'en', STUDENT_LANG)
       const extraMeanings = _.chain(updatedTerms).union(meanings).without(headword).value()
 
       await replyVoices(ctx, urlUK, urlUS)
@@ -322,7 +314,7 @@ const onMoreHandler = async (ctx) => {
       )
     }
 
-    const { alternatives, meanings, translations } = data
+    const {alternatives, meanings, translations} = data
 
     await replyDefinitions(ctx, {
       definitions: alternatives,
@@ -390,8 +382,8 @@ const onAddHandler = async (ctx) => {
       urlUK,
       urlUS,
       examples,
-      meanings: formatMeanings(meanings),
-      translations: formatTranslations(translations),
+      meanings,
+      translations,
     })
 
     if (error) {
@@ -402,17 +394,28 @@ const onAddHandler = async (ctx) => {
       )
     }
 
-    const syncAfter = await sync(endpoint)
-
     await ctx.answerCbQuery()
 
     await ctx.reply(
       `"${headword}" added successfully! 👍`
     )
 
+    // Object.entries(cache).forEach(([key, value]) => {
+    //   if (value.headword === headword) {
+    //     ctx.telegram.editMessageReplyMarkup(
+    //       ctx.update.callback_query.message.chat.id,
+    //       key,
+    //       undefined,
+    //       JSON.stringify({inline_keyboard: []}),
+    //     )
+    //   }
+    // })
+
+    const syncAfter = await sync(endpoint)
+
     if (!syncAfter || syncAfter.error) {
       ctx.reply(
-        `"${headword}" added successfully! But sync not available for the time being. Please, run /sync a bit later`
+        `"But sync not available for the time being. Please, run /sync a bit later`
       )
     }
   } catch (e) {
