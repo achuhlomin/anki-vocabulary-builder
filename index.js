@@ -261,7 +261,7 @@ const onMessageHandler = async (ctx) => {
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const {meanings, translations} = await yandexLookup(headword, 'en', STUDENT_LANG)
+      const {meanings, translations} = await yandexLookup(headword, 'en', STUDENT_LANG, false)
 
       await replyVoices(ctx, urlUK, urlUS)
 
