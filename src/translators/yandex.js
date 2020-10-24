@@ -28,7 +28,7 @@ export const lookup = async (term, from, to, shallow = true) => {
     for(let j=0; j < tr.length; j++) {
       const {text: translation, mean = []} = tr[j]
 
-      if (!shallow) {
+      if (!shallow && j < 3) {
         const data = await lookup(translation, to, from)
 
         data.translations.slice(0, 6).forEach(({term: backTranslation}) => {
