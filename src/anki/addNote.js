@@ -1,33 +1,9 @@
 import got from 'got'
-import _ from "lodash";
 
-const formatTranslations = (items, {pos}) => {
-  const chunks = [];
-
-  const groups = items.reduce((acc, {pos: itemPos, term}) => {
-    if (acc[itemPos]) {
-      acc[itemPos].push(term)
-    } else {
-      acc[itemPos] = [term]
-    }
-
-    return acc
-  }, {})
-
-  _.union([pos], Object.keys(groups)).forEach(pos => {
-    const items = groups[pos]
-
-    if (items?.length) {
-      chunks.push(`${pos}: ${items.join(', ')}`)
-    }
-  })
-
-  return chunks.join('<br/>')
-}
-
-const formatAlternatives = (alternatives) => {
-  return alternatives.join(', ')
-}
+import {
+  formatAlternatives,
+  formatTranslations,
+} from "./fields.js"
 
 export const addNote = async (endpoint, deckName, fields) => {
   const {
