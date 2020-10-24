@@ -6,13 +6,11 @@ const {JSDOM} = jsdom
 const cambridgeDomain = 'dictionary.cambridge.org'
 
 const formatDef = (def, {headword}) => {
-  const formattedDef = def.trim().replace(/:$/, '').trim()
-
-  if (formattedDef[0] === formattedDef[0].toUpperCase()) {
-    return _.lowerFirst(formattedDef).replace(new RegExp(headword, 'g'), '..')
-  }
-
-  return formattedDef
+  return _.lowerFirst(def)
+    .replace(/(\s*:\s*)$/, '')
+    .replace(/\s+/g, ' ')
+    .replace(new RegExp(`^${headword}`, 'g'), '..')
+    .trim()
 }
 
 const getEntries = async (term) => {
@@ -67,14 +65,16 @@ export const lookup = async (term) => {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]
     const headword = entry.querySelector('.headword').textContent
-    const pos = entry.querySelector('.pos').textContent
-    const hint = entry.querySelector('.var')?.textContent
+    const pos = entry.querySelector('.pos')?.textContent
+
+    if (!pos) continue
+
     const region = entry.querySelector('.region')?.textContent
     const $uk = entry.querySelector('.uk')
-    const urlUK = $uk?.querySelector(`source[type='audio/mpeg']`).getAttribute('src')
+    const urlUK = $uk?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
     const phonUK = $uk?.querySelector('.pron')?.textContent
     const $us = entry.querySelector('.us')
-    const urlUS = $us?.querySelector(`source[type='audio/mpeg']`).getAttribute('src')
+    const urlUS = $us?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
     const phonUS = $us?.querySelector('.pron')?.textContent
     const items = entry.querySelectorAll('.pr.dsense') || []
 
@@ -91,7 +91,6 @@ export const lookup = async (term) => {
         region,
         pos,
         gram,
-        hint,
         phonUK,
         phonUS,
         urlUK: urlUK ? `https://${cambridgeDomain}${urlUK}` : null,

@@ -105,11 +105,11 @@ const formatTranslations = (items, {pos}) => {
   return chunks.join('\n')
 }
 
-const formatMeanings = (meanings) => {
-  return meanings.join(', ')
+const formatAlternatives = (alternatives) => {
+  return alternatives.join(', ')
 }
 
-const getDefinitionMsg = ({headword, def, region, phon, pos, gram, hint}) => {
+const getDefinitionMsg = ({headword, def, region, phon, pos, gram}) => {
   const part = [pos, region, gram].filter(i => i).join(' ')
   const _phon = phon ? ` ${phon}` : ''
   const _def = `${headword}${_phon} — ${def}. ${part}`
@@ -117,7 +117,7 @@ const getDefinitionMsg = ({headword, def, region, phon, pos, gram, hint}) => {
   return `${_def}`
 }
 
-const replyDefinitions = async (ctx, {definitions, meanings, translations}) => {
+const replyDefinitions = async (ctx, {definitions, alternatives, translations}) => {
   for (let i = 0; i < definitions.length; i++) {
     const {
       headword,
@@ -125,7 +125,6 @@ const replyDefinitions = async (ctx, {definitions, meanings, translations}) => {
       region,
       pos,
       gram,
-      hint,
       phonUK,
       phonUS,
       urlUK,
@@ -139,7 +138,6 @@ const replyDefinitions = async (ctx, {definitions, meanings, translations}) => {
       region,
       pos,
       gram,
-      hint,
       phon: phonUK ? phonUK : phonUS,
     })
 
@@ -156,30 +154,29 @@ const replyDefinitions = async (ctx, {definitions, meanings, translations}) => {
       region,
       pos,
       gram,
-      hint,
       phonUK,
       phonUS,
       urlUK,
       urlUS,
       examples,
-      meanings,
+      alternatives,
       translations,
     }
   }
 }
 
-const getInfoMsg = ({translations, meanings}) => {
+const getInfoMsg = ({translations, alternatives}) => {
   const _translations = translations && translations.length ? `<i>${translations}</i>` : ''
-  const _meanings = meanings && meanings.length ? `\n\nSee also: ${meanings}` : ''
+  const _alternatives = alternatives && alternatives.length ? `\n\nSee also: ${alternatives}` : ''
 
-  return `${_translations}${_meanings}`
+  return `${_translations}${_alternatives}`
 }
 
 const replyPivot = async (ctx, data) => {
   const {
     definition,
+    rest,
     alternatives,
-    meanings,
     translations,
   } = data;
 
@@ -189,7 +186,6 @@ const replyPivot = async (ctx, data) => {
     region,
     pos,
     gram,
-    hint,
     phonUK,
     phonUS,
     urlUK,
@@ -203,12 +199,11 @@ const replyPivot = async (ctx, data) => {
     region,
     pos,
     gram,
-    hint,
     phon: phonUK ? phonUK : phonUS,
   })
 
   const infoMsg = getInfoMsg({
-    meanings: formatMeanings(meanings),
+    alternatives: formatAlternatives(alternatives),
     translations: formatTranslations(translations, {pos}),
   });
 
@@ -218,7 +213,7 @@ const replyPivot = async (ctx, data) => {
     Markup.callbackButton('Add', 'add'),
   ]
 
-  if (alternatives.length) {
+  if (rest.length) {
     buttons.push(Markup.callbackButton('More', 'more'))
   }
 
@@ -231,15 +226,14 @@ const replyPivot = async (ctx, data) => {
     region,
     pos,
     gram,
-    hint,
     phonUK,
     phonUS,
     urlUK,
     urlUS,
     examples,
-    meanings,
-    translations,
     alternatives,
+    translations,
+    rest,
   }
 }
 
@@ -257,18 +251,18 @@ const onMessageHandler = async (ctx) => {
 
     const term = await getTerm(ctx.message.text)
     const definitions = await cambridgeLookup(term)
-    const [definition, ...alternatives] = definitions
+    const [definition, ...rest] = definitions
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const {meanings, translations} = await yandexLookup(headword, 'en', STUDENT_LANG, false)
+      const {alternatives, translations} = await yandexLookup(headword, 'en', STUDENT_LANG, false)
 
       await replyVoices(ctx, urlUK, urlUS)
 
       await replyPivot(ctx, {
         definition,
+        rest,
         alternatives,
-        meanings,
         translations,
       })
     } else {
@@ -293,7 +287,7 @@ const onMoreHandler = async (ctx) => {
       )
     }
 
-    const {alternatives, meanings, translations} = data
+    const {rest, alternatives, translations} = data
 
     await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([
         Markup.callbackButton('Add', 'add')
@@ -301,8 +295,8 @@ const onMoreHandler = async (ctx) => {
     ))
 
     await replyDefinitions(ctx, {
-      definitions: alternatives,
-      meanings,
+      definitions: rest,
+      alternatives,
       translations,
     });
 
@@ -344,13 +338,12 @@ const onAddHandler = async (ctx) => {
       region,
       pos,
       gram,
-      hint,
       phonUK,
       phonUS,
       urlUK,
       urlUS,
       examples,
-      meanings,
+      alternatives,
       translations,
     } = data;
 
@@ -360,13 +353,12 @@ const onAddHandler = async (ctx) => {
       region,
       pos,
       gram,
-      hint,
       phonUK,
       phonUS,
       urlUK,
       urlUS,
       examples,
-      meanings,
+      alternatives,
       translations,
     })
 
@@ -384,17 +376,6 @@ const onAddHandler = async (ctx) => {
       `"${headword}" added successfully! 👍`
     )
 
-    // Object.entries(cache).forEach(([key, value]) => {
-    //   if (value.headword === headword) {
-    //     ctx.telegram.editMessageReplyMarkup(
-    //       ctx.update.callback_query.message.chat.id,
-    //       key,
-    //       undefined,
-    //       JSON.stringify({inline_keyboard: []}),
-    //     )
-    //   }
-    // })
-
     const syncAfter = await sync(endpoint)
 
     if (!syncAfter || syncAfter.error) {
@@ -409,7 +390,6 @@ const onAddHandler = async (ctx) => {
   }
 }
 
-bot.use(Telegraf.log())
 bot.start(onStartHandler)
 bot.help(onHelpHandler)
 bot.command('sync', onSyncHandler)

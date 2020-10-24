@@ -25,8 +25,8 @@ const formatTranslations = (items, {pos}) => {
   return chunks.join('<br/>')
 }
 
-const formatMeanings = (meanings) => {
-  return meanings.join(', ')
+const formatAlternatives = (alternatives) => {
+  return alternatives.join(', ')
 }
 
 export const addNote = async (endpoint, deckName, fields) => {
@@ -36,13 +36,12 @@ export const addNote = async (endpoint, deckName, fields) => {
     region,
     pos,
     gram,
-    hint,
     phonUK,
     phonUS,
     urlUK,
     urlUS,
     examples,
-    meanings,
+    alternatives,
     translations,
   } = fields
 
@@ -62,7 +61,7 @@ export const addNote = async (endpoint, deckName, fields) => {
           ex1: examples[0],
           ex2: examples[1],
           ex3: examples[2],
-          syns: formatMeanings(meanings),
+          syns: formatAlternatives(alternatives),
           trans: formatTranslations(translations, {pos}),
         },
         options: {

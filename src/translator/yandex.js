@@ -18,7 +18,7 @@ export const lookup = async (term, from, to, shallow = true) => {
   })
 
   const defs = JSON.parse(body).def
-  const meanings = []
+  const straightMeanings = []
   const translations = []
   const backTranslations = []
 
@@ -49,16 +49,16 @@ export const lookup = async (term, from, to, shallow = true) => {
 
       mean.forEach(({text: meaning}) => {
         if (meaning) {
-          meanings.push(meaning)
+          straightMeanings.push(meaning)
         }
       })
     }
   }
 
-  const relevantMeanings = _.union(meanings.slice(0, MAX_STRAIGHT_MEANINGS), backTranslations.slice(0, MAX_BACK_TRANSLATIONS))
+  const alternatives = _.union(straightMeanings.slice(0, MAX_STRAIGHT_MEANINGS), backTranslations.slice(0, MAX_BACK_TRANSLATIONS))
 
   return {
-    meanings: relevantMeanings,
+    alternatives,
     translations,
   }
 }
