@@ -8,10 +8,8 @@ import {
   replyPivot,
 } from "../replies/index.js"
 
-const STUDENT_LANG = process.env.STUDENT_LANG
-
-const getTerm = async (text) => {
-  const { translations } = await yandexLookup(text, STUDENT_LANG, 'en')
+const getTerm = async (yandexToken, studentLang, text) => {
+  const { translations } = await yandexLookup(yandexToken, text, studentLang, 'en')
 
   if (translations.length) {
     return translations[0].term
@@ -24,11 +22,14 @@ export const onMessageHandler = async (ctx) => {
   console.time('onMessageHandler');
 
   try {
-    console.log(`message: ${ctx.message.text}`)
+    const { text } = ctx.message
+    const { yandexToken, studentLang } = ctx.state
+
+    console.log(`message: ${text}`)
 
     await ctx.replyWithChatAction('typing')
 
-    const term = await getTerm(ctx.message.text)
+    const term = await getTerm(yandexToken, studentLang, text)
 
     console.timeLog('onMessageHandler');
 
@@ -40,7 +41,7 @@ export const onMessageHandler = async (ctx) => {
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const {alternatives, translations} = await yandexLookup(headword, 'en', STUDENT_LANG, false)
+      const {alternatives, translations} = await yandexLookup(yandexToken, headword, 'en', studentLang, false)
 
       console.timeLog('onMessageHandler');
 

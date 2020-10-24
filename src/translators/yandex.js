@@ -1,19 +1,18 @@
 import got from 'got'
 import _ from 'lodash'
 
-const YANDEX_TOKEN = process.env.YANDEX_TOKEN
 const MAX_BACK_TRANSLATIONS = 30
 const MAX_STRAIGHT_MEANINGS = 6
 
 const ignoredPoses = ['foreign word']
 
-export const lookup = async (term, from, to, shallow = true) => {
+export const lookup = async (yandexToken, term, from, to, shallow = true) => {
   const {body} = await got('api/v1/dicservice.json/lookup', {
     prefixUrl: `https://dictionary.yandex.net`,
     searchParams: {
       lang: `${from}-${to}`,
       text: term,
-      key: YANDEX_TOKEN,
+      key: yandexToken,
     }
   })
 
@@ -29,7 +28,7 @@ export const lookup = async (term, from, to, shallow = true) => {
       const {text: translation, mean = []} = tr[j]
 
       if (!shallow && j < 3) {
-        const data = await lookup(translation, to, from)
+        const data = await lookup(yandexToken, translation, to, from)
 
         data.translations.slice(0, 6).forEach(({term: backTranslation}) => {
           if (backTranslation !== term) {
