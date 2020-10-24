@@ -19,23 +19,23 @@ const getTerm = async (yandexToken, studentLang, text) => {
 }
 
 export const onMessageHandler = async (ctx) => {
-  console.time('onMessageHandler');
+  const { text, message_id } = ctx.message
+  const { yandexToken, studentLang } = ctx.state
+  const timeLabel = `onMessageHandler ${message_id}`
+
+  console.time(timeLabel)
+  console.log(`${message_id}: ${text}`)
 
   try {
-    const { text } = ctx.message
-    const { yandexToken, studentLang } = ctx.state
-
-    console.log(`message: ${text}`)
-
     await ctx.replyWithChatAction('typing')
 
     const term = await getTerm(yandexToken, studentLang, text)
 
-    console.timeLog('onMessageHandler');
+    console.timeLog(timeLabel, 'getTerm')
 
     const definitions = await cambridgeLookup(term)
     
-    console.timeLog('onMessageHandler');
+    console.timeLog(timeLabel, 'cambridgeLookup')
 
     const [definition, ...rest] = definitions
 
@@ -43,7 +43,7 @@ export const onMessageHandler = async (ctx) => {
       const {headword, urlUK, urlUS} = definition;
       const {alternatives, translations} = await yandexLookup(yandexToken, headword, 'en', studentLang, false)
 
-      console.timeLog('onMessageHandler');
+      console.timeLog(timeLabel, 'yandexLookup')
 
       await replyVoices(ctx, urlUK, urlUS)
 
@@ -59,8 +59,8 @@ export const onMessageHandler = async (ctx) => {
   } catch (e) {
     console.error(e)
 
-    return ctx.reply(e.message)
+    ctx.reply(e.message)
   }
 
-  console.timeEnd('onMessageHandler');
+  console.timeEnd(timeLabel)
 }
