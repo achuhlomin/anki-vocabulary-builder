@@ -9,7 +9,7 @@ const formatDef = (def, {headword}) => {
   return _.lowerFirst(def)
     .replace(/(\s*:\s*)$/, '')
     .replace(/\s+/g, ' ')
-    .replace(new RegExp(`^${headword}`, 'g'), '..')
+    .replace(new RegExp(`^${headword}|(?<=\\s)${headword}`, 'ig'), '..')
     .trim()
 }
 
