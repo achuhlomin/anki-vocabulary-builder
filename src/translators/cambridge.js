@@ -13,34 +13,25 @@ const formatDef = (def, {headword}) => {
     .trim()
 }
 
-const getEntries = async (term) => {
-
+const getDom = async (term) => {
   try {
     const htmlUrl = `https://${cambridgeDomain}/search/english/direct/?q=${encodeURI(term)}`
-    const dom = await JSDOM.fromURL(htmlUrl)
-    const entries = dom.window.document.querySelectorAll('.entry')
-
-    return {
-      entries,
-      dom,
-    }
+    return await JSDOM.fromURL(htmlUrl)
   } catch (e) {
     return null
   }
 
 }
 
-const getSafeEntries = async (term) => {
-  const result = await getEntries(term)
+const getDocument = async (term) => {
+  const dom = await getDom(term)
 
-  if (!result) {
-    return [];
+  if (!dom) {
+    return null;
   }
 
-  const {entries, dom} = result;
-
-  if (entries.length) {
-    return entries
+  if (dom.window.location.pathname.startsWith(`/dictionary/english/`)) {
+    return dom.window.document
   }
 
   const newTerm = dom.window.document.querySelector('.x .lbt span')?.textContent
@@ -49,56 +40,64 @@ const getSafeEntries = async (term) => {
     return null
   }
 
-  const newResult = await getEntries(newTerm)
+  const newDom = await getDom(newTerm)
 
-  if (!newResult) {
-    return []
-  }
-
-  return newResult.entries
+  return newDom.window.document
 }
 
 export const lookup = async (term) => {
-  const entries = await getSafeEntries(term)
   const definitions = [];
+  const document = await getDocument(term)
 
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]
-    const headword = entry.querySelector('.headword').textContent
-    const pos = entry.querySelector('.pos')?.textContent
+  if (!document) return definitions
 
-    if (!pos) continue
+  const headword = document.querySelector('.headword').textContent
 
-    const region = entry.querySelector('.region')?.textContent
-    const $uk = entry.querySelector('.uk')
-    const urlUK = $uk?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
-    const phonUK = $uk?.querySelector('.pron')?.textContent
-    const $us = entry.querySelector('.us')
-    const urlUS = $us?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
-    const phonUS = $us?.querySelector('.pron')?.textContent
-    const items = entry.querySelectorAll('.pr.dsense') || []
+  if (!headword) return definitions
+  
+  const $uk = document.querySelector('.uk')
+  const urlUK = $uk?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
+  const phonUK = $uk?.querySelector('.pron')?.textContent
+  const $us = document.querySelector('.us')
+  const urlUS = $us?.querySelector(`source[type='audio/mpeg']`)?.getAttribute('src')
+  const phonUS = $us?.querySelector('.pron')?.textContent
+  const $items = document.querySelectorAll('.pr.entry-body__el') || []
+  const allExamples = [];
 
-    for (let j = 0; j < items.length; j++) {
-      const item = items[j]
-      const def = item.querySelector('.def').textContent
-      const gram = item.querySelector('.dgram')?.textContent
-      const $examples = item.querySelectorAll('.examp')
+  for (let i = 0; i < $items.length; i++) {
+    const item = $items[i]
+    const $defBlocks = item.querySelectorAll('.def-block')
+    const pos = item.querySelector('.pos')?.textContent
+    const gram = item.querySelector('.dgram')?.textContent
+
+    for (let j = 0; j < $defBlocks.length; j++) {
+      const $defBlock = $defBlocks[j]
+      const def = $defBlock.querySelector('.def')?.textContent
+      
+      if (!def) continue
+      
+      const $examples = $defBlock.querySelectorAll('.examp')
       const examples = Array.prototype.map.call($examples, node => node.textContent)
+
+      allExamples.push(...examples)
 
       definitions.push({
         headword,
         def: formatDef(def, {headword}),
-        region,
         pos,
         gram,
         phonUK,
         phonUS,
         urlUK: urlUK ? `https://${cambridgeDomain}${urlUK}` : null,
         urlUS: urlUS ? `https://${cambridgeDomain}${urlUS}` : null,
-        examples,
+        examples: [examples[0]],
       })
     }
   }
+
+  definitions.forEach(definition => {
+    definition.examples = _.union(definition.examples, allExamples)
+  })
 
   return definitions
 }

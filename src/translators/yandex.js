@@ -1,10 +1,23 @@
 import got from 'got'
 import _ from 'lodash'
 
-const MAX_BACK_TRANSLATIONS = 30
-const MAX_STRAIGHT_MEANINGS = 6
+const MAX_SECONDARY_SUBGROUP = 4
+const MAX_ALTERNATIVES = 24
 
 const ignoredPoses = ['foreign word']
+
+const reverseLookup = async (yandexToken, primaryTerm, term, from, to) => {
+  const data = await lookup(yandexToken, term, from, to)
+  const alternatives = []
+
+  data.translations.slice(0, MAX_SECONDARY_SUBGROUP).forEach(({term: alternative}) => {
+    if (alternative !== primaryTerm) {
+      alternatives.push(alternative)
+    }
+  })
+
+  return alternatives;
+}
 
 export const lookup = async (yandexToken, term, from, to, shallow = true) => {
   const {body} = await got('api/v1/dicservice.json/lookup', {
@@ -17,9 +30,9 @@ export const lookup = async (yandexToken, term, from, to, shallow = true) => {
   })
 
   const defs = JSON.parse(body).def
-  const straightMeanings = []
+  const primaryGroup = []
   const translations = []
-  const backTranslations = []
+  const promises = [];
 
   for (let i = 0; i < defs.length; i++) {
     const {pos, tr = []} = defs[i]
@@ -28,13 +41,7 @@ export const lookup = async (yandexToken, term, from, to, shallow = true) => {
       const {text: translation, mean = []} = tr[j]
 
       if (!shallow && j < 3) {
-        const data = await lookup(yandexToken, translation, to, from)
-
-        data.translations.slice(0, 6).forEach(({term: backTranslation}) => {
-          if (backTranslation !== term) {
-            backTranslations.push(backTranslation)
-          }
-        })
+        promises.push(reverseLookup(yandexToken, term, translation, to, from))
       }
 
       if (translation) {
@@ -46,15 +53,17 @@ export const lookup = async (yandexToken, term, from, to, shallow = true) => {
         }
       }
 
-      mean.forEach(({text: meaning}) => {
-        if (meaning) {
-          straightMeanings.push(meaning)
+      mean.forEach(({text: alternative}) => {
+        if (alternative) {
+          primaryGroup.push(alternative)
         }
       })
     }
   }
 
-  const alternatives = _.union(straightMeanings.slice(0, MAX_STRAIGHT_MEANINGS), backTranslations.slice(0, MAX_BACK_TRANSLATIONS))
+  const secondarySubgroups = await Promise.all(promises)
+  const secondaryGroup = _.union(...secondarySubgroups)
+  const alternatives = _.union(primaryGroup, secondaryGroup).slice(0, MAX_ALTERNATIVES)
 
   return {
     alternatives,
