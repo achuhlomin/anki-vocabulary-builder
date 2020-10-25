@@ -1,6 +1,6 @@
 {
   "name": "anki-vacabulary-builder",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "bot": "node index.js",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/achuhlomin/anki-vocabulary-builder.git"
   },
-  "author": "",
+  "author": "andrewchuhlomin@gmail.com",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/achuhlomin/anki-vocabulary-builder/issues"
