@@ -9,6 +9,10 @@ import {
 } from "../replies/index.js"
 
 const getTerm = async (yandexToken, studentLang, text) => {
+  if (studentLang === 'ru' && /^[A-Za-z]/.test(text)) {
+    return text
+  }
+
   const { translations } = await yandexLookup(yandexToken, text, studentLang, 'en')
 
   if (translations.length) {
@@ -33,15 +37,23 @@ export const onMessageHandler = async (ctx) => {
 
     console.timeLog(timeLabel, 'getTerm')
 
-    const definitions = await cambridgeLookup(term)
-    
+    const [definitions, meta] = await Promise.all([
+      cambridgeLookup(term),
+      yandexLookup(yandexToken, term, 'en', studentLang, false),
+    ])
+
+    let {alternatives, translations} = meta;
+
     console.timeLog(timeLabel, 'cambridgeLookup')
 
     const [definition, ...rest] = definitions
 
     if (definition) {
       const {headword, urlUK, urlUS} = definition;
-      const {alternatives, translations} = await yandexLookup(yandexToken, headword, 'en', studentLang, false)
+
+      if (headword !== term) {
+        ({alternatives, translations} = await yandexLookup(yandexToken, headword, 'en', studentLang, false))
+      }
 
       console.timeLog(timeLabel, 'yandexLookup')
 
