@@ -65,18 +65,19 @@ export const lookup = async (term) => {
   const allExamples = [];
 
   for (let i = 0; i < $items.length; i++) {
-    const item = $items[i]
-    const $defBlocks = item.querySelectorAll('.def-block')
-    const pos = item.querySelector('.pos')?.textContent
-    const gram = item.querySelector('.dgram')?.textContent
+    const $item = $items[i]
+    const $blocks = $item.querySelectorAll('.def-block')
+    const region = $item.querySelector('.region')?.textContent
+    const pos = $item.querySelector('.pos')?.textContent
+    const gram = $item.querySelector('.dgram')?.textContent
 
-    for (let j = 0; j < $defBlocks.length; j++) {
-      const $defBlock = $defBlocks[j]
-      const def = $defBlock.querySelector('.def')?.textContent
+    for (let j = 0; j < $blocks.length; j++) {
+      const $block = $blocks[j]
+      const def = $block.querySelector('.def')?.textContent
       
       if (!def) continue
       
-      const $examples = $defBlock.querySelectorAll('.examp')
+      const $examples = $block.querySelectorAll('.examp')
       const examples = Array.prototype.map.call($examples, node => node.textContent)
 
       allExamples.push(...examples)
@@ -84,6 +85,7 @@ export const lookup = async (term) => {
       definitions.push({
         headword,
         def: formatDef(def, {headword}),
+        region: region !== 'uk' ? region : null,
         pos,
         gram,
         phonUK,
