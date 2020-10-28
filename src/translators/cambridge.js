@@ -68,7 +68,6 @@ export const lookup = async (term) => {
     const $item = $items[i]
     const $blocks = $item.querySelectorAll('.def-block')
     const region = $item.querySelector('.region')?.textContent
-    const pos = $item.querySelector('.pos')?.textContent
     const gram = $item.querySelector('.dgram')?.textContent
 
     for (let j = 0; j < $blocks.length; j++) {
@@ -76,7 +75,9 @@ export const lookup = async (term) => {
       const def = $block.querySelector('.def')?.textContent
       
       if (!def) continue
-      
+
+      const $poses = $block.closest('.entry').querySelector('.pos-header').querySelectorAll('.pos')
+      const poses = Array.prototype.map.call($poses, node => node.textContent)
       const $examples = $block.querySelectorAll('.examp')
       const examples = Array.prototype.map.call($examples, node => node.textContent)
 
@@ -86,7 +87,7 @@ export const lookup = async (term) => {
         headword,
         def: formatDef(def, {headword}),
         region: region !== 'uk' ? region : null,
-        pos,
+        poses,
         gram,
         phonUK,
         phonUS,

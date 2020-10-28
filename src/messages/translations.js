@@ -1,19 +1,19 @@
 import _ from "lodash";
 
-export const formatTranslations = (items, {pos}) => {
+export const formatTranslations = ({translations, poses}) => {
   const chunks = [];
 
-  const groups = items.reduce((acc, {pos: itemPos, term}) => {
-    if (acc[itemPos]) {
-      acc[itemPos].push(term)
+  const groups = translations.reduce((acc, {pos, term}) => {
+    if (acc[pos]) {
+      acc[pos].push(term)
     } else {
-      acc[itemPos] = [term]
+      acc[pos] = [term]
     }
 
     return acc
   }, {})
 
-  _.union([pos], Object.keys(groups)).forEach(pos => {
+  _.union(poses, Object.keys(groups)).forEach(pos => {
     const items = groups[pos]
 
     if (items?.length) {

@@ -1,6 +1,6 @@
 import _ from "lodash";
 
-export const formatTranslations = (items, {pos}) => {
+export const formatTranslations = (items, {poses}) => {
   const chunks = [];
 
   const groups = items.reduce((acc, {pos: itemPos, term}) => {
@@ -13,7 +13,7 @@ export const formatTranslations = (items, {pos}) => {
     return acc
   }, {})
 
-  _.union([pos], Object.keys(groups)).forEach(pos => {
+  _.union(poses, Object.keys(groups)).forEach(pos => {
     const items = groups[pos]
 
     if (items?.length) {
@@ -26,4 +26,10 @@ export const formatTranslations = (items, {pos}) => {
 
 export const formatAlternatives = (alternatives) => {
   return alternatives.join(', ')
+}
+
+export const formatPart = ({poses, region, gram}) => {
+  const _poses = poses.join(', ')
+
+  return [_poses, region, gram].filter(i => i).join(' ')
 }

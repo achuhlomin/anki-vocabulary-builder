@@ -19,7 +19,7 @@ export const replyPivot = async (ctx, data) => {
     headword,
     def,
     region,
-    pos,
+    poses,
     gram,
     phonUK,
     phonUS,
@@ -32,14 +32,14 @@ export const replyPivot = async (ctx, data) => {
     headword,
     def,
     region,
-    pos,
+    poses,
     gram,
     phon: phonUK ? phonUK : phonUS,
   })
 
   const infoMsg = formatInfo({
     alternatives: formatAlternatives(alternatives),
-    translations: formatTranslations(translations, {pos}),
+    translations: formatTranslations({translations, poses}),
   });
 
   const pivotMsg = `${definitionMsg}\n\n${infoMsg}`
@@ -59,7 +59,7 @@ export const replyPivot = async (ctx, data) => {
     headword,
     def,
     region,
-    pos,
+    poses,
     gram,
     phonUK,
     phonUS,
