@@ -2,8 +2,11 @@ import Markup from 'telegraf/markup.js'
 
 import {formatDefinition} from "../messages/index.js";
 
-export const replyDefinitions = async (ctx, {definitions, alternatives, translations}) => {
-  for (let i = 0; i < definitions.length; i++) {
+export const replyDefinitions = async (ctx, {definitions}) => {
+  const { state } = ctx
+  const { redisClient } = state
+
+  for (let i = 1; i < definitions.length; i++) {
     const {
       headword,
       def,
@@ -12,9 +15,6 @@ export const replyDefinitions = async (ctx, {definitions, alternatives, translat
       gram,
       phonUK,
       phonUS,
-      urlUK,
-      urlUS,
-      examples,
     } = definitions[i]
 
     const definitionMsg = formatDefinition({
@@ -33,19 +33,11 @@ export const replyDefinitions = async (ctx, {definitions, alternatives, translat
     const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
     const reply = await ctx.reply(definitionMsg, extra)
 
-    ctx.session[reply.message_id] = {
+    const value = JSON.stringify({
       headword,
-      def,
-      region,
-      poses,
-      gram,
-      phonUK,
-      phonUS,
-      urlUK,
-      urlUS,
-      examples,
-      alternatives,
-      translations,
-    }
+      offset: i,
+    })
+
+    redisClient.set(`message:${reply.message_id}`, value, 'EX', 60 * 60 * 24 * 30 * 12)
   }
 }

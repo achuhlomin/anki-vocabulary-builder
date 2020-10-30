@@ -7,9 +7,12 @@ import {
 
 export const onAddHandler = async (ctx) => {
   try {
-    const data = ctx.session[ctx.update.callback_query.message.message_id]
+    const { state } = ctx
+    const { redisClient } = state
+    const messageId = ctx.update.callback_query.message.message_id
+    const {headword, offset} = JSON.parse(await redisClient.get(`message:${messageId}`))
 
-    if (!data) {
+    if (!headword) {
       await ctx.answerCbQuery()
 
       throw new Error(
@@ -18,7 +21,6 @@ export const onAddHandler = async (ctx) => {
     }
 
     const {endpoint, deckName} = await getConnect(ctx)
-
     const syncBefore = await sync(endpoint)
 
     if (!syncBefore || syncBefore.error) {
@@ -29,8 +31,9 @@ export const onAddHandler = async (ctx) => {
       )
     }
 
+    const {definitions, alternatives, translations} = JSON.parse(await redisClient.get(`headword:${headword}`))
+
     const {
-      headword,
       def,
       region,
       poses,
@@ -40,9 +43,7 @@ export const onAddHandler = async (ctx) => {
       urlUK,
       urlUS,
       examples,
-      alternatives,
-      translations,
-    } = data;
+    } = definitions[offset];
 
     const {error} = await addNote(endpoint, deckName, {
       headword,

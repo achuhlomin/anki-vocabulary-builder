@@ -1,9 +1,13 @@
 help:
 	@echo "Available targets:"
+	@echo " redis                                   Builds redis:latest image"
 	@echo " build                                   Builds anki:local image"
 	@echo " user_gui name=<username>				Runs anki:<username> gui to sync"
 	@echo " user_image name=<username>				Commits anki:<username> image"
 	@echo " ankid name=<username>					Runs anki:<username> daemon"
+
+redis:
+	docker run --name anki-vocabulary-redis -d redis:latest
 
 build:
 	docker build --tag anki:local .

@@ -51,7 +51,7 @@ export const lookup = async (term) => {
 
   if (!document) return definitions
 
-  const headword = document.querySelector('.headword').textContent
+  const headword = document.querySelector('.headword')?.textContent
 
   if (!headword) return definitions
   

@@ -4,9 +4,12 @@ import {replyDefinitions} from "../replies/index.js";
 
 export const onMoreHandler = async (ctx) => {
   try {
-    const data = ctx.session[ctx.update.callback_query.message.message_id]
+    const { state } = ctx
+    const { redisClient } = state
+    const messageId = ctx.update.callback_query.message.message_id;
+    const {headword} = JSON.parse(await redisClient.get(`message:${messageId}`))
 
-    if (!data) {
+    if (!headword) {
       await ctx.answerCbQuery()
 
       throw new Error(
@@ -14,7 +17,7 @@ export const onMoreHandler = async (ctx) => {
       )
     }
 
-    const {rest, alternatives, translations} = data
+    const {definitions, alternatives, translations} = JSON.parse(await redisClient.get(`headword:${headword}`))
 
     await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([
         Markup.callbackButton('Add', 'add')
@@ -22,7 +25,7 @@ export const onMoreHandler = async (ctx) => {
     ))
 
     await replyDefinitions(ctx, {
-      definitions: rest,
+      definitions,
       alternatives,
       translations,
     });

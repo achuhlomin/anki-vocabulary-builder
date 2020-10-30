@@ -23,9 +23,6 @@ export const replyPivot = async (ctx, data) => {
     gram,
     phonUK,
     phonUS,
-    urlUK,
-    urlUS,
-    examples,
   } = definition
 
   const definitionMsg = formatDefinition({
@@ -55,19 +52,7 @@ export const replyPivot = async (ctx, data) => {
   const extra = Markup.inlineKeyboard(buttons).extra({parse_mode: 'HTML'})
   const reply = await ctx.reply(pivotMsg, extra)
 
-  ctx.session[reply.message_id] = {
-    headword,
-    def,
-    region,
-    poses,
-    gram,
-    phonUK,
-    phonUS,
-    urlUK,
-    urlUS,
-    examples,
-    alternatives,
-    translations,
-    rest,
-  }
+  console.log('reply.message_id', reply.message_id, headword)
+
+  return reply.message_id
 }

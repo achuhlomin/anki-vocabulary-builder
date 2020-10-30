@@ -17,12 +17,11 @@
   },
   "homepage": "https://github.com/achuhlomin/anki-vocabulary-builder#readme",
   "dependencies": {
-    "@google-cloud/translate": "^6.0.3",
-    "axios": "^0.20.0",
+    "async-redis": "^1.1.7",
     "got": "^10.7.0",
     "jsdom": "^16.4.0",
     "lodash": "^4.17.20",
-    "telegraf": "^3.38.0",
-    "uuid": "^8.3.0"
+    "redis": "^3.0.2",
+    "telegraf": "^3.38.0"
   }
 }
