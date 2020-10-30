@@ -10,7 +10,7 @@ https://github.com/FooSoft/anki-connect
 1. Set up envs
 
         export BOT_TOKEN=<TELEGRAM_BOT_TOKEN>
-        export TRANSLATOR_TOKEN=<AZURE_TRANSLATOR_TOKEN>
-        export STUDENT_LANG=<AZURE_TRANSLATOR_LANG>
+        export YANDEX_TOKEN=<YANDEX_DICTIONARY_TOKEN>
+        export STUDENT_LANG=<NATIVE_LANGUAGE>
 
 1. Run `npm run bot`
