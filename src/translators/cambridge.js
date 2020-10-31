@@ -80,6 +80,7 @@ export const lookup = async (term) => {
       const poses = Array.prototype.map.call($poses, node => node.textContent)
       const $examples = $block.querySelectorAll('.examp')
       const examples = Array.prototype.map.call($examples, node => node.textContent)
+      const example = examples[0];
 
       allExamples.push(...examples)
 
@@ -93,7 +94,7 @@ export const lookup = async (term) => {
         phonUS,
         urlUK: urlUK ? `https://${cambridgeDomain}${urlUK}` : null,
         urlUS: urlUS ? `https://${cambridgeDomain}${urlUS}` : null,
-        examples: [examples[0]],
+        examples: example ? [example] : [],
       })
     }
   }
