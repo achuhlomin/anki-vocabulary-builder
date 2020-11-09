@@ -1,7 +1,7 @@
 import {
   cambridgeLookup,
   yandexLookup,
-} from "../translators/index.js"
+} from "../api/index.js"
 
 import {
   replyVoices,

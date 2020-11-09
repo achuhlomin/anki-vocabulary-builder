@@ -2,9 +2,9 @@ help:
 	@echo "Available targets:"
 	@echo " redis                                   Builds redis:latest image"
 	@echo " build                                   Builds anki:local image"
-	@echo " user_gui name=<username>				Runs anki:<username> gui to sync"
-	@echo " user_image name=<username>				Commits anki:<username> image"
-	@echo " ankid name=<username>					Runs anki:<username> daemon"
+	@echo " gui name=<id>							Runs anki:<id> gui to sync"
+	@echo " image name=<id>							Commits anki:<id> image"
+	@echo " ankid name=<id>							Runs anki:<id> daemon"
 
 redis:
 	docker run --name anki-vocabulary-redis -d redis:latest
@@ -16,16 +16,35 @@ gui:
 	docker run -it \
 		-v /tmp/.X11-unix:/tmp/.X11-unix \
 		-e DISPLAY=unix${DISPLAY} \
-		--name anki_$(name) \
+		--name test_anki_$(id) \
 		anki:local
 
-image: gui
-	docker commit anki_$(name) anki:$(name)
-	docker container rm anki_$(name)
+image:
+	docker commit anki_$(id) anki:$(id)
+	docker container rm anki_$(id)
 
-ankid: image
+ankid:
 	docker run \
 		-d \
 		-e QT_QPA_PLATFORM=minimal \
-		--name anki_$(name) \
-		anki:$(name)
+		--name anki_$(id) \
+		anki:$(id)
+
+update:
+	docker commit anki_$(id) anki:$(id)
+	docker container stop anki_$(id)
+	docker container rm anki_$(id)
+	docker run -it \
+		-v /tmp/.X11-unix:/tmp/.X11-unix \
+		-e DISPLAY=unix${DISPLAY} \
+		-e QT_QPA_PLATFORM=xcb \
+		--name anki_$(id) \
+		anki:$(id)
+	docker container stop anki_$(id)
+	docker commit anki_$(id) anki:$(id)
+	docker container rm anki_$(id)
+	docker run \
+    		-d \
+    		-e QT_QPA_PLATFORM=minimal \
+    		--name anki_$(id) \
+    		anki:$(id)

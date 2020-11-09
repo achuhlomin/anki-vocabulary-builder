@@ -4,7 +4,7 @@ https://github.com/FooSoft/anki-connect
 
 1. Run `make redis`
 1. Run `make build`
-1. Run `make ankid name=<telegram_username>`
+1. Run `make ankid id=<telegram_id>`
 1. Manually sync user's ankiweb
 1. Create 'Vocabulary Builder' desk from `./model` template
 1. Set up envs

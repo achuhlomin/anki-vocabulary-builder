@@ -16,11 +16,14 @@ import {
 } from './src/handlers/index.js'
 
 const REDIS_CONTAINER_NAME = 'anki-vocabulary-redis'
+const S3_BUCKET_NAME = 'anki-vocabulary-bucket';
 
 const {
   BOT_TOKEN,
   YANDEX_TOKEN,
   STUDENT_LANG,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
 } = process.env
 
 const bot = new Telegraf(BOT_TOKEN)
@@ -38,6 +41,9 @@ bot.use((ctx, next) => {
     ...ctx.state,
     yandexToken: YANDEX_TOKEN,
     studentLang: STUDENT_LANG,
+    s3BucketName: S3_BUCKET_NAME,
+    awsAccessKeyId: AWS_ACCESS_KEY_ID,
+    awsSecretAccessKey: AWS_SECRET_ACCESS_KEY,
     redisClient,
   }
 

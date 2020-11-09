@@ -3,24 +3,27 @@ import got from 'got'
 import {
   formatAlternatives,
   formatTranslations,
-  formatPart,
+  formatMeta,
 } from "./fields.js"
 
 export const addNote = async (endpoint, deckName, fields) => {
   const {
     headword,
-    def,
     region,
     poses,
     gram,
-    phonUK,
-    phonUS,
+    def,
+    voice,
     urlUK,
     urlUS,
+    phonUK,
+    phonUS,
     examples,
     alternatives,
     translations,
   } = fields
+
+  const id = headword
 
   const data = {
     'action': 'addNote',
@@ -30,22 +33,30 @@ export const addNote = async (endpoint, deckName, fields) => {
         deckName: deckName,
         modelName: 'Vocabulary Builder',
         fields: {
+          id,
           word: headword,
-          def: def,
-          part: formatPart({poses, region, gram}),
+          meta: formatMeta({poses, region, gram}),
+          def,
           phon_uk: phonUK,
           phon_us: phonUS,
           ex1: examples[0],
           ex2: examples[1],
           ex3: examples[2],
-          syns: formatAlternatives(alternatives),
           trans: formatTranslations(translations, {poses}),
+          alt: formatAlternatives(alternatives),
         },
         options: {
           allowDuplicate: false,
           duplicateScope: 'deck'
         },
         audio: [
+          {
+            url: voice,
+            filename: `vocabulary-def-${id}.mp3`,
+            fields: [
+              'voice'
+            ]
+          },
           {
             url: urlUK,
             filename: `vocabulary-uk-${headword}.mp3`,

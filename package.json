@@ -17,7 +17,9 @@
   },
   "homepage": "https://github.com/achuhlomin/anki-vocabulary-builder#readme",
   "dependencies": {
+    "@google-cloud/text-to-speech": "^3.1.1",
     "async-redis": "^1.1.7",
+    "aws-sdk": "^2.787.0",
     "got": "^10.7.0",
     "jsdom": "^16.4.0",
     "lodash": "^4.17.20",

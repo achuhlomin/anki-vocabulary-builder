@@ -1,4 +1,6 @@
+import AWS from 'aws-sdk'
 import {getConnect} from "../helpers/index.js"
+import {tts} from "../api/index.js"
 
 import {
   addNote,
@@ -8,7 +10,7 @@ import {
 export const onAddHandler = async (ctx) => {
   try {
     const { state } = ctx
-    const { redisClient } = state
+    const { redisClient, s3BucketName, awsAccessKeyId, awsSecretAccessKey } = state
     const messageId = ctx.update.callback_query.message.message_id
     const {headword, offset} = JSON.parse(await redisClient.get(`message:${messageId}`))
 
@@ -45,16 +47,33 @@ export const onAddHandler = async (ctx) => {
       examples,
     } = definitions[offset];
 
+    const s3 = new AWS.S3({ // todo
+      accessKeyId: awsAccessKeyId,
+      secretAccessKey: awsSecretAccessKey,
+      signatureVersion: 'v4',
+      region: 'eu-central-1',
+      params: {
+        Bucket: s3BucketName,
+      },
+    });
+
+    const voice = await tts({
+      text: def,
+      name: `${headword}-${offset}`,
+      s3,
+    })
+
     const {error} = await addNote(endpoint, deckName, {
       headword,
-      def,
       region,
       poses,
       gram,
-      phonUK,
-      phonUS,
+      def,
+      voice,
       urlUK,
       urlUS,
+      phonUK,
+      phonUS,
       examples,
       alternatives,
       translations,

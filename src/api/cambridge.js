@@ -9,6 +9,7 @@ const formatDef = (def, {headword}) => {
   return _.lowerFirst(def)
     .replace(/(\s*:\s*)$/, '')
     .replace(/\s+/g, ' ')
+    .replace(/([a-z])/, val => val.toUpperCase())
     .replace(new RegExp(`^${headword}|(?<=\\s)${headword}`, 'ig'), '..')
     .trim()
 }

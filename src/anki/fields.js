@@ -28,7 +28,7 @@ export const formatAlternatives = (alternatives) => {
   return alternatives.join(', ')
 }
 
-export const formatPart = ({poses, region, gram}) => {
+export const formatMeta = ({poses, region, gram}) => {
   const _poses = poses.join(', ')
 
   return [_poses, region, gram].filter(i => i).join(' ')
