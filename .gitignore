@@ -3,3 +3,6 @@
 
 # Nodejs
 node_modules/
+
+# Project
+src/keys/

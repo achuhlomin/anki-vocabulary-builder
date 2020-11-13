@@ -1,13 +1,9 @@
 help:
 	@echo "Available targets:"
-	@echo " redis                                   Builds redis:latest image"
 	@echo " build                                   Builds anki:local image"
 	@echo " gui name=<id>							Runs anki:<id> gui to sync"
 	@echo " image name=<id>							Commits anki:<id> image"
 	@echo " ankid name=<id>							Runs anki:<id> daemon"
-
-redis:
-	docker run --name anki-vocabulary-redis -d redis:latest
 
 build:
 	docker build --tag anki:local .
@@ -28,6 +24,7 @@ ankid:
 		-d \
 		-e QT_QPA_PLATFORM=minimal \
 		--name anki_$(id) \
+		--network anki-vocabulary \
 		anki:$(id)
 
 update:

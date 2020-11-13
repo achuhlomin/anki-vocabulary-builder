@@ -1,10 +1,6 @@
-import util from 'util'
-import childProcess from 'child_process'
 import Telegraf from 'telegraf'
 import redis from 'redis'
 import asyncRedis from 'async-redis'
-
-const exec = util.promisify(childProcess.exec)
 
 import {
   onStartHandler,
@@ -13,12 +9,12 @@ import {
   onTextHandler,
   onMoreHandler,
   onAddHandler,
-} from './src/handlers/index.js'
+} from './handlers/index.js'
 
-const REDIS_CONTAINER_NAME = 'anki-vocabulary-redis'
 const S3_BUCKET_NAME = 'anki-vocabulary-bucket';
 
 const {
+  REDIS_HOST,
   BOT_TOKEN,
   YANDEX_TOKEN,
   STUDENT_LANG,
@@ -27,11 +23,9 @@ const {
 } = process.env
 
 const bot = new Telegraf(BOT_TOKEN)
-const execRedisIp = `docker container inspect ${REDIS_CONTAINER_NAME} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`
-const {stdout: redisIp} = await exec(execRedisIp)
 
 const redisClient = asyncRedis.decorate(redis.createClient({
-    host: redisIp,
+    host: REDIS_HOST,
     port: 6379,
   }
 ));

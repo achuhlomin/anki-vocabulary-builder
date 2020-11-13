@@ -1,7 +1,7 @@
 import util from 'util'
 import childProcess from 'child_process'
 import got from "got";
-import {tts} from "../src/api/index.js"
+import {tts} from "../api/index.js"
 import AWS from "aws-sdk";
 
 const exec = util.promisify(childProcess.exec)
