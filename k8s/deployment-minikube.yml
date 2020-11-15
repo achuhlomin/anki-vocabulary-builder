@@ -15,7 +15,7 @@ spec:
       containers:
         - name: anki-builder
           image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-redis:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 6379
 
@@ -37,7 +37,7 @@ spec:
       containers:
         - name: anki-builder
           image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-builder:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 80
           env:
@@ -102,7 +102,7 @@ spec:
       containers:
         - name: anki-339253577
           image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-339253577:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8765
           env:
@@ -127,7 +127,7 @@ spec:
       containers:
         - name: anki-369837507
           image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-369837507:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8765
           env:
