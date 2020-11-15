@@ -16,7 +16,7 @@ export const getConnect = async (ctx) => {
     const customMeta = anki[id]
 
     return {
-      endpoint: `http://anki-${id}:8765`,
+      endpoint: `http://anki-${id}-service:8765`,
       deckName: customMeta && customMeta.deckName ? customMeta.deckName : 'Vocabulary Builder'
     }
   }

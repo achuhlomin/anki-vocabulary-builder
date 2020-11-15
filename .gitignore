@@ -5,5 +5,4 @@
 node_modules/
 
 # Project
-src/keys/
-src/k8s/
+k8s/secret.yml

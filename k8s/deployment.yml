@@ -1,0 +1,197 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anki-redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anki-redis
+  template:
+    metadata:
+      labels:
+        app: anki-redis
+    spec:
+      containers:
+        - name: anki-builder
+          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-redis:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 6379
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anki-builder-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anki-builder
+  template:
+    metadata:
+      labels:
+        app: anki-builder
+    spec:
+      containers:
+        - name: anki-builder
+          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-builder:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: translation-api-owner-secret
+                  key: bot-token
+            - name: BING_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: translation-api-owner-secret
+                  key: bing-token
+            - name: STUDENT_LANG
+              value: "ru"
+            - name: YANDEX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: translation-api-owner-secret
+                  key: yandex-token
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: translation-api-owner-secret
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: translation-api-owner-secret
+                  key: aws-secret-access-key
+            - name: REDIS_HOST
+              value: "anki-redis-service"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/tmp/keys/translation-api-owner.json"
+          volumeMounts:
+            - name: translation-api-owner-volume
+              mountPath: /tmp/keys
+              readOnly: true
+      volumes:
+        - name: translation-api-owner-volume
+          secret:
+            secretName: translation-api-owner-secret
+            items:
+              - key: translation-api-owner-json
+                path: translation-api-owner.json
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anki-339253577-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anki-339253577
+  template:
+    metadata:
+      labels:
+        app: anki-339253577
+    spec:
+      containers:
+        - name: anki-339253577
+          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-339253577:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8765
+          env:
+            - name: QT_QPA_PLATFORM
+              value: "minimal"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anki-369837507-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anki-369837507
+  template:
+    metadata:
+      labels:
+        app: anki-369837507
+    spec:
+      containers:
+        - name: anki-369837507
+          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-369837507:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8765
+          env:
+            - name: QT_QPA_PLATFORM
+              value: "minimal"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anki-redis-service
+spec:
+  selector:
+    app: anki-redis
+  ports:
+    - name: anki-redis-listener
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anki-builder-service
+spec:
+  selector:
+    app: anki-builder
+  ports:
+    - name: anki-builder-listener
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anki-339253577-service
+spec:
+  selector:
+    app: anki-339253577
+  ports:
+    - name: anki-339253577-listener
+      protocol: TCP
+      port: 8765
+      targetPort: 8765
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anki-369837507-service
+spec:
+  selector:
+    app: anki-369837507
+  ports:
+    - name: anki-369837507-listener
+      protocol: TCP
+      port: 8765
+      targetPort: 8765
+  type: ClusterIP
+
+
