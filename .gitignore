@@ -6,3 +6,4 @@ node_modules/
 
 # Project
 src/keys/
+src/k8s/
