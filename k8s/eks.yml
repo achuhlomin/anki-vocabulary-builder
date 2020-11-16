@@ -6,5 +6,5 @@ metadata:
 nodeGroups:
   - name: spot-node-group-2vcpu-2gb
     desiredCapacity: 1
-    instancesDistribution:
+    instancesDistribution: # create spot instances
       instanceTypes: ["t3a.small"]

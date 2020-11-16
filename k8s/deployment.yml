@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: anki-builder
-          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-redis:latest
+          image: gcr.io/anki-vocabulary-bot/anki-redis:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 6379
@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
         - name: anki-builder
-          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-builder:latest
+          image: gcr.io/anki-vocabulary-bot/anki-builder:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -101,7 +101,7 @@ spec:
     spec:
       containers:
         - name: anki-339253577
-          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-339253577:latest
+          image: gcr.io/anki-vocabulary-bot/anki-339253577:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8765
@@ -126,7 +126,7 @@ spec:
     spec:
       containers:
         - name: anki-369837507
-          image: 340733264846.dkr.ecr.eu-central-1.amazonaws.com/anki-369837507:latest
+          image: gcr.io/anki-vocabulary-bot/anki-369837507:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8765

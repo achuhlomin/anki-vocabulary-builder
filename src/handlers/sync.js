@@ -9,8 +9,6 @@ export const onSyncHandler = async (ctx) => {
     const syncResp = await sync(endpoint)
 
     if (!syncResp || syncResp.error) {
-      await ctx.answerCbQuery()
-
       throw new Error(
         `Failure! Sync not available, please try again later 🏓`
       )
