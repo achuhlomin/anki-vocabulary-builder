@@ -4,6 +4,7 @@ metadata:
   name: anki-vocabulary
   region: eu-central-1
 nodeGroups:
-  - name: node-group-1
-    instanceType: t2.small
+  - name: spot-node-group-2vcpu-2gb
     desiredCapacity: 1
+    instancesDistribution:
+      instanceTypes: ["t3a.small"]
