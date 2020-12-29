@@ -207,6 +207,8 @@ class AnkiConnect:
 
         allowDuplicate = False
         duplicateScope = None
+        duplicateScopeDeckName = None
+        duplicateScopeCheckChildren = False
         if 'options' in note:
           if 'allowDuplicate' in note['options']:
             allowDuplicate = note['options']['allowDuplicate']
@@ -214,8 +216,16 @@ class AnkiConnect:
               raise Exception('option parameter \'allowDuplicate\' must be boolean')
           if 'duplicateScope' in note['options']:
             duplicateScope = note['options']['duplicateScope']
+          if 'duplicateScopeOptions' in note['options']:
+            duplicateScopeOptions = note['options']['duplicateScopeOptions']
+            if 'deckName' in duplicateScopeOptions:
+              duplicateScopeDeckName = duplicateScopeOptions['deckName']
+            if 'checkChildren' in duplicateScopeOptions:
+              duplicateScopeCheckChildren = duplicateScopeOptions['checkChildren']
+              if type(duplicateScopeCheckChildren) is not bool:
+                raise Exception('option parameter \'duplicateScopeOptions.checkChildren\' must be boolean')
 
-        duplicateOrEmpty = self.isNoteDuplicateOrEmptyInScope(ankiNote, deck, duplicateScope)
+        duplicateOrEmpty = self.isNoteDuplicateOrEmptyInScope(ankiNote, deck, collection, duplicateScope, duplicateScopeDeckName, duplicateScopeCheckChildren)
         if duplicateOrEmpty == 1:
             raise Exception('cannot create note because it is empty')
         elif duplicateOrEmpty == 2:
@@ -223,22 +233,39 @@ class AnkiConnect:
             raise Exception('cannot create note because it is a duplicate')
           else:
             return ankiNote
-        elif duplicateOrEmpty == False:
+        elif duplicateOrEmpty == 0:
             return ankiNote
         else:
             raise Exception('cannot create note for unknown reason')
 
-    def isNoteDuplicateOrEmptyInScope(self, note, deck, duplicateScope):
-        "1 if first is empty; 2 if first is a duplicate, False otherwise."
-        result = note.dupeOrEmpty()
-        if result != 2 or duplicateScope != 'deck':
+    def isNoteDuplicateOrEmptyInScope(self, note, deck, collection, duplicateScope, duplicateScopeDeckName, duplicateScopeCheckChildren):
+        "1 if first is empty; 2 if first is a duplicate, 0 otherwise."
+        if duplicateScope != 'deck':
+            result = note.dupeOrEmpty()
+            if result == False:
+                return 0
             return result
 
         # dupeOrEmpty returns if a note is a global duplicate
         # the rest of the function checks to see if the note is a duplicate in the deck
         val = note.fields[0]
-        did = deck['id']
+        if not val.strip():
+            return 1
         csum = anki.utils.fieldChecksum(val)
+
+        did = deck['id']
+        if duplicateScopeDeckName is not None:
+            deck2 = collection.decks.byName(duplicateScopeDeckName)
+            if deck2 is None:
+                # Invalid deck, so cannot be duplicate
+                return 0
+            did = deck2['id']
+
+        dids = {}
+        dids[did] = True
+        if duplicateScopeCheckChildren:
+            for kv in collection.decks.children(did):
+                dids[kv[1]] = True
 
         for noteId in note.col.db.list(
             "select id from notes where csum = ? and id != ? and mid = ?",
@@ -246,13 +273,13 @@ class AnkiConnect:
             note.id or 0,
             note.mid,
         ):
-            if note.col.db.scalar(
-                "select id from cards where nid = ? and did = ?",
-                noteId,
-                did
+            for cardDeckId in note.col.db.list(
+                "select did from cards where nid = ?",
+                noteId
             ):
-                return 2
-        return False
+                if cardDeckId in dids:
+                    return 2
+        return 0
 
 
     #
@@ -444,10 +471,15 @@ class AnkiConnect:
 
 
     @util.api()
-    def storeMediaFile(self, filename, data=None, url=None):
+    def storeMediaFile(self, filename, data=None, path=None, url=None):
         if data:
             self.deleteMediaFile(filename)
             self.media().writeData(filename, base64.b64decode(data))
+        elif path:
+            self.deleteMediaFile(filename)
+            with open(path, 'rb') as f:
+                data = f.read()
+            self.media().writeData(filename, data)
         elif url:
             self.deleteMediaFile(filename)
             downloadedData = util.download(url)
@@ -482,7 +514,13 @@ class AnkiConnect:
         ankiNote = self.createNote(note)
 
         audioObjectOrList = note.get('audio')
-        self.addAudio(ankiNote, audioObjectOrList)
+        self.addMedia(ankiNote, audioObjectOrList, util.MediaType.Audio)
+
+        videoObjectOrList = note.get('video')
+        self.addMedia(ankiNote, videoObjectOrList, util.MediaType.Video)
+
+        pictureObjectOrList = note.get('picture')
+        self.addMedia(ankiNote, pictureObjectOrList, util.MediaType.Picture)
 
         collection = self.collection()
         self.startEditing()
@@ -495,20 +533,20 @@ class AnkiConnect:
         return ankiNote.id
 
 
-    def addAudio(self, ankiNote, audioObjectOrList):
-        if audioObjectOrList is None:
+    def addMedia(self, ankiNote, mediaObjectOrList, mediaType):
+        if mediaObjectOrList is None:
             return
 
-        if isinstance(audioObjectOrList, list):
-            audioList = audioObjectOrList
+        if isinstance(mediaObjectOrList, list):
+            mediaList = mediaObjectOrList
         else:
-            audioList = [audioObjectOrList]
+            mediaList = [mediaObjectOrList]
 
-        for audio in audioList:
-            if audio is not None and len(audio['fields']) > 0:
+        for media in mediaList:
+            if media is not None and len(media['fields']) > 0:
                 try:
-                    data = util.download(audio['url'])
-                    skipHash = audio.get('skipHash')
+                    data = util.download(media['url'])
+                    skipHash = media.get('skipHash')
                     if skipHash is None:
                         skip = False
                     else:
@@ -517,14 +555,17 @@ class AnkiConnect:
                         skip = skipHash == m.hexdigest()
 
                     if not skip:
-                        audioFilename = self.media().writeData(audio['filename'], data)
-                        for field in audio['fields']:
+                        mediaFilename = self.media().writeData(media['filename'], data)
+                        for field in media['fields']:
                             if field in ankiNote:
-                                ankiNote[field] += u'[sound:{}]'.format(audioFilename)
+                                if mediaType is util.MediaType.Picture:
+                                    ankiNote[field] += u'<div><img src="{}"><br></div>'.format(mediaFilename)
+                                elif mediaType is util.MediaType.Audio or mediaType is util.MediaType.Video:
+                                    ankiNote[field] += u'[sound:{}]'.format(mediaFilename)
 
                 except Exception as e:
                     errorMessage = str(e).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    for field in audio['fields']:
+                    for field in media['fields']:
                         if field in ankiNote:
                             ankiNote[field] += errorMessage
 
@@ -548,7 +589,13 @@ class AnkiConnect:
                 ankiNote[name] = value
 
         audioObjectOrList = note.get('audio')
-        self.addAudio(ankiNote, audioObjectOrList)
+        self.addMedia(ankiNote, audioObjectOrList, util.MediaType.Audio)
+
+        videoObjectOrList = note.get('video')
+        self.addMedia(ankiNote, videoObjectOrList, util.MediaType.Video)
+
+        pictureObjectOrList = note.get('picture')
+        self.addMedia(ankiNote, pictureObjectOrList, util.MediaType.Picture)
 
         ankiNote.flush()
 

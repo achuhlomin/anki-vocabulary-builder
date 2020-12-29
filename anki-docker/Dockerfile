@@ -1,5 +1,23 @@
-FROM ubuntu:latest
-ENV DEBIAN_FRONTEND noninteractive
+FROM ubuntu:18.04
+
+# https://medium.com/@benjamin.botto/opengl-and-cuda-applications-in-docker-af0eece000f1
+
+# Env vars for the nvidia-container-runtime.
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
+
+# Dependencies for glvnd, X11 and anki
+RUN apt-get update \
+  && apt-get install -y -qq --no-install-recommends \
+    libglvnd0 \
+    libgl1 \
+    libglx0 \
+    libegl1 \
+    libxext6 \
+    libx11-6 \
+    anki \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update && apt install -y anki
 EXPOSE 8765
 RUN adduser anki

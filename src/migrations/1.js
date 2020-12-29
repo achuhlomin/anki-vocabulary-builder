@@ -125,7 +125,7 @@ const migration = async (endpoint, {noteType}) => {
 
 for(let i = 0; i <= ids.length; i++) {
   const id = ids[i]
-  const {stdout: ip} = await exec(`docker container inspect anki_${id} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
+  const {stdout: ip} = await exec(`docker container inspect ankid-${id} | jq '.[0].NetworkSettings.IPAddress' | sed 's/"//g' | tr -d '\n'`)
   const meta = anki[id]
   const endpoint = `http://${ip}:8765`
   const deckName = meta && meta.deckName ? meta.deckName : 'Vocabulary Builder'

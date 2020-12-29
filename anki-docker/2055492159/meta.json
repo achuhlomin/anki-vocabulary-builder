@@ -1,1 +1,1 @@
-{"name": "AnkiConnect", "mod": 1594583693, "min_point_version": 0, "max_point_version": 0, "branch_index": 0, "config": {"apiKey": null, "apiLogPath": null, "webBindAddress": "0.0.0.0", "webBindPort": 8765, "webCorsOrigin": "http://localhost", "webCorsOriginList": ["http://localhost"]}}
+{"name": "AnkiConnect", "mod": 1609192765, "min_point_version": 0, "max_point_version": 0, "branch_index": 0, "config": {"apiKey": null, "apiLogPath": null, "webBindAddress": "0.0.0.0", "webBindPort": 8765, "webCorsOrigin": "http://localhost", "webCorsOriginList": ["http://localhost"]}}

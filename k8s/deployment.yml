@@ -88,20 +88,20 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: anki-339253577-deployment
+  name: ankid-339253577-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: anki-339253577
+      app: ankid-339253577
   template:
     metadata:
       labels:
-        app: anki-339253577
+        app: ankid-339253577
     spec:
       containers:
-        - name: anki-339253577
-          image: gcr.io/anki-vocabulary-bot/anki-339253577:latest
+        - name: ankid-339253577
+          image: gcr.io/anki-vocabulary-bot/ankid-339253577:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8765
@@ -113,20 +113,20 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: anki-369837507-deployment
+  name: ankid-369837507-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: anki-369837507
+      app: ankid-369837507
   template:
     metadata:
       labels:
-        app: anki-369837507
+        app: ankid-369837507
     spec:
       containers:
-        - name: anki-369837507
-          image: gcr.io/anki-vocabulary-bot/anki-369837507:latest
+        - name: ankid-369837507
+          image: gcr.io/anki-vocabulary-bot/ankid-369837507:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8765
@@ -168,12 +168,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: anki-339253577-service
+  name: ankid-339253577-service
 spec:
   selector:
-    app: anki-339253577
+    app: ankid-339253577
   ports:
-    - name: anki-339253577-listener
+    - name: ankid-339253577-listener
       protocol: TCP
       port: 8765
       targetPort: 8765
@@ -183,12 +183,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: anki-369837507-service
+  name: ankid-369837507-service
 spec:
   selector:
-    app: anki-369837507
+    app: ankid-369837507
   ports:
-    - name: anki-369837507-listener
+    - name: ankid-369837507-listener
       protocol: TCP
       port: 8765
       targetPort: 8765
