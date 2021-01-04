@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: anki-redis
-          image: gcr.io/anki-vocabulary-bot/anki-redis:latest
+          image: redis:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 6379
@@ -36,8 +36,8 @@ spec:
     spec:
       containers:
         - name: anki-builder
-          image: gcr.io/anki-vocabulary-bot/anki-builder:latest
-          imagePullPolicy: Always
+          image: $INSECURE_REGISTRY_IP:5000/anki-builder:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 80
           env:
@@ -101,8 +101,8 @@ spec:
     spec:
       containers:
         - name: ankid-339253577
-          image: gcr.io/anki-vocabulary-bot/ankid-339253577:latest
-          imagePullPolicy: Always
+          image: $INSECURE_REGISTRY_IP:5000/ankid-339253577:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8765
           env:
@@ -126,8 +126,8 @@ spec:
     spec:
       containers:
         - name: ankid-369837507
-          image: gcr.io/anki-vocabulary-bot/ankid-369837507:latest
-          imagePullPolicy: Always
+          image: $INSECURE_REGISTRY_IP:5000/ankid-369837507:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8765
           env:
