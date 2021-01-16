@@ -59,11 +59,7 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
 
     #!/bin/sh
     
-    if [ "$EUID" -ne 0 ]; then
-        VBoxManage controlvm anki-cluster resume;
-    else
-        su -s /bin/VBoxManage achuhlomin controlvm anki-cluster resume
-    fi
+    minikube start -p anki-cluster &
     
     exit 0
     
@@ -71,11 +67,7 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
 
     #!/bin/sh
     
-    if [ "$EUID" -ne 0 ]; then
-        VBoxManage controlvm anki-cluster pause;
-    else
-        su -s /bin/VBoxManage achuhlomin controlvm anki-cluster pause
-    fi
+    minikube stop -p anki-cluster;
     
     exit 0
 
@@ -87,13 +79,15 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
     After=hibernate.target
     After=hybrid-sleep.target
     After=suspend-then-hibernate.target
+    Wants=network-online.target
     
     [Service]
+    Type=oneshot
+    RemainAfterExit=true
     User=achuhlomin
     ExecStart=/bin/minikube-anki-resume
     
     [Install]
-    WantedBy=multi-user.target
     WantedBy=suspend.target
     WantedBy=hibernate.target
     WantedBy=hybrid-sleep.target
@@ -101,45 +95,23 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
     
 /bin/i3exit (notice /bin/minikube-anki-pause)
 
+    ...
+    /bin/minikube-anki-pause ; dm-tool switch-to-greeter
+    /bin/minikube-anki-pause ; $logind suspend
+    /bin/minikube-anki-pause ; $logind hibernate
+    /bin/minikube-anki-pause ; $logind suspend-then-hibernate
+    ...
+    
+/bin/lightdm-display-setup-script
+
     #!/bin/sh
-    # /usr/bin/i3exit
-    
-    # with openrc use loginctl
-    [ "$(cat /proc/1/comm)" = "systemd" ] && logind=systemctl || logind=loginctl
-    
-    case "$1" in
-        lock)
-            blurlock
-    	#dm-tool lock
-            ;;
-        logout)
-            i3-msg exit
-            ;;
-        switch_user)
-            /bin/minikube-anki-pause ; dm-tool switch-to-greeter
-            ;;
-        suspend)
-            /bin/minikube-anki-pause ; $logind suspend-then-hibernate
-            ;;
-        hibernate)
-            /bin/minikube-anki-pause ; $logind hibernate
-            ;;
-        reboot)
-            $logind reboot
-            ;;
-        shutdown)
-            $logind poweroff
-            ;;
-        *)
-            echo "== ! i3exit: missing or invalid argument ! =="
-            echo "Try again with: lock | logout | switch_user | suspend | hibernate | reboot | shutdown"
-            exit 2
-    esac
-    
+        
+    su achuhlomin -c "/bin/minikube-anki-resume" &
+        
     exit 0
 
 /etc/lightdm/lightdm.conf
 
     ...
-    display-setup-script=/bin/minikube-anki-resume
+    display-setup-script=/bin/lightdm-display-setup-script
     ...
