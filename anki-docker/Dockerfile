@@ -1,10 +1,11 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # https://medium.com/@benjamin.botto/opengl-and-cuda-applications-in-docker-af0eece000f1
 
 # Env vars for the nvidia-container-runtime.
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
+ENV DEBIAN_FRONTEND noninteractive
 
 # Dependencies for glvnd, X11 and anki
 RUN apt-get update \
@@ -18,7 +19,6 @@ RUN apt-get update \
     anki \
   && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt install -y anki
 EXPOSE 8765
 RUN adduser anki
 COPY 2055492159/ /home/anki/Anki2/addons21/2055492159/

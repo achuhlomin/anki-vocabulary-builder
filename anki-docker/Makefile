@@ -1,9 +1,7 @@
 help:
 	@echo "Examples:"
-	@echo " build                                   Builds anki:local image"
-	@echo " make gui id=369837507					Runs anki:<id> gui to sync"
-	@echo " image id=<id>							Commits anki:<id> image"
-	@echo " ankid id=<id>							Runs anki:<id> daemon"
+	@echo " make all id=369837507	Create anki container for achuhlomin"
+	@echo " make all id=339253577	Create anki container for amashyr"
 
 build:
 	docker build --tag anki:local .
@@ -13,6 +11,7 @@ build:
 # `--gpus all` at docker run
 # and glvnd, X11 dependencies in container (see Dockerfile)
 gui:
+	docker rm gui-anki-$(id) | true
 	docker run -it \
 		--gpus all \
 		-v /tmp/.X11-unix:/tmp/.X11-unix \

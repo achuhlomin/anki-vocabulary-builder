@@ -16,14 +16,14 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
 ### Set up cluster
 
     minikube start \
-        --driver=virtualbox \
+        --driver=docker \
         --cpus=2 \
         --memory=2gb \
         --disk-size=10gb \
-        --insecure-registry "192.168.99.1/24" \
-        -p anki-cluster
+        --insecure-registry "192.168.99.0/24" \
+        -p anki-docker-cluster
         
-    minikube addons enable registry -p anki-cluster
+    minikube addons enable registry -p anki-docker-cluster
     
     # Add ip to docker insecure-registries
     echo "{\"insecure-registries\" : [\"$(minikube ip -p anki-cluster):5000\"]}" | sudo tee /etc/docker/daemon.json > /dev/null
@@ -39,14 +39,12 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
     ; docker push $(minikube ip -p anki-cluster):5000/ankid-339253577:latest \
     ; docker push $(minikube ip -p anki-cluster):5000/anki-builder:latest
     
-    # Pull images into minikube
-    eval $(minikube docker-env -p anki-cluster)
-    
-    docker pull $(minikube ip -p anki-cluster):5000/ankid-369837507:latest \
+    # Pull images in minikube
+    eval $(minikube docker-env -p anki-docker-cluster) \
+    ; docker pull $(minikube ip -p anki-cluster):5000/ankid-369837507:latest \
     ; docker pull $(minikube ip -p anki-cluster):5000/ankid-339253577:latest \
-    ; docker pull $(minikube ip -p anki-cluster):5000/anki-builder:latest
-    
-    eval $(minikube docker-env -p anki-cluster -u)
+    ; docker pull $(minikube ip -p anki-cluster):5000/anki-builder:latest \
+    ; eval $(minikube docker-env -p anki-docker-cluster -u)
     
 ### Kubectl
 
