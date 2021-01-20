@@ -5,111 +5,52 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
 ### Usage
 
     minikube profile list
-    minikube status -p anki-cluster
+    minikube status -p anki-docker-cluster
 
-    minikube start -p anki-cluster
-    minikube stop -p anki-cluster
+    minikube start -p anki-docker-cluster
+    minikube stop -p anki-docker-cluster
     
     # Delete cluster
-    minikube delete -p anki-cluster
+    minikube delete -p anki-docker-cluster
 
 ### Set up cluster
 
     minikube start \
         --driver=docker \
-        --cpus=2 \
+        --cpus=4 \
         --memory=2gb \
-        --disk-size=10gb \
-        --insecure-registry "192.168.99.0/24" \
+        --disk-size=8gb \
+        --insecure-registry "192.168.0.0/16" \
         -p anki-docker-cluster
         
     minikube addons enable registry -p anki-docker-cluster
     
     # Add ip to docker insecure-registries
-    echo "{\"insecure-registries\" : [\"$(minikube ip -p anki-cluster):5000\"]}" | sudo tee /etc/docker/daemon.json > /dev/null
+    echo "{\"insecure-registries\" : [\"$(minikube ip -p anki-docker-cluster):5000\"]}" | sudo tee /etc/docker/daemon.json > /dev/null
     sudo systemctl restart docker
+    minikube start -p anki-docker-cluster
     
 ### Minikube Registry
 
-    docker tag ankid-369837507:latest $(minikube ip -p anki-cluster):5000/ankid-369837507:latest \
-    ; docker tag ankid-339253577:latest $(minikube ip -p anki-cluster):5000/ankid-339253577:latest \
-    : docker tag anki-builder:latest $(minikube ip -p anki-cluster):5000/anki-builder:latest
+    docker tag anki-builder:latest $(minikube ip -p anki-docker-cluster):5000/anki-builder:latest \
+    ; docker tag ankid-369837507:latest $(minikube ip -p anki-docker-cluster):5000/ankid-369837507:latest \
+    ; docker tag ankid-339253577:latest $(minikube ip -p anki-docker-cluster):5000/ankid-339253577:latest
     
-    docker push $(minikube ip -p anki-cluster):5000/ankid-369837507:latest \
-    ; docker push $(minikube ip -p anki-cluster):5000/ankid-339253577:latest \
-    ; docker push $(minikube ip -p anki-cluster):5000/anki-builder:latest
+    docker push $(minikube ip -p anki-docker-cluster):5000/anki-builder:latest \
+    ; docker push $(minikube ip -p anki-docker-cluster):5000/ankid-369837507:latest \
+    ; docker push $(minikube ip -p anki-docker-cluster):5000/ankid-339253577:latest
     
     # Pull images in minikube
     eval $(minikube docker-env -p anki-docker-cluster) \
-    ; docker pull $(minikube ip -p anki-cluster):5000/ankid-369837507:latest \
-    ; docker pull $(minikube ip -p anki-cluster):5000/ankid-339253577:latest \
-    ; docker pull $(minikube ip -p anki-cluster):5000/anki-builder:latest \
+    ; docker pull $(minikube ip -p anki-docker-cluster):5000/anki-builder:latest \
+    ; docker pull $(minikube ip -p anki-docker-cluster):5000/ankid-369837507:latest \
+    ; docker pull $(minikube ip -p anki-docker-cluster):5000/ankid-339253577:latest \
     ; eval $(minikube docker-env -p anki-docker-cluster -u)
     
 ### Kubectl
 
-    INSECURE_REGISTRY_IP=$(minikube ip -p anki-cluster) envsubst < deployment-minikube.yml | kubectl apply -f secret.yml -f -
+    # Apply
+    INSECURE_REGISTRY_IP=$(minikube ip -p anki-docker-cluster) envsubst < deployment-minikube.yml | kubectl apply -f secret.yml -f -
+    
+    # Delete
     kubectl delete -f secret.yml -f deployment-minikube.yml
-    
-### Systemd/virtualbox/lightdm/i3exit
-
-/bin/minikube-anki-resume
-
-    #!/bin/sh
-    
-    minikube start -p anki-cluster &
-    
-    exit 0
-    
-/bin/minikube-anki-pause
-
-    #!/bin/sh
-    
-    minikube stop -p anki-cluster;
-    
-    exit 0
-
-/etc/systemd/system/minikube-anki-resume.service
-
-    [Unit]
-    Description=Resume minikube vm for anki-cluster profile
-    After=suspend.target
-    After=hibernate.target
-    After=hybrid-sleep.target
-    After=suspend-then-hibernate.target
-    Wants=network-online.target
-    
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    User=achuhlomin
-    ExecStart=/bin/minikube-anki-resume
-    
-    [Install]
-    WantedBy=suspend.target
-    WantedBy=hibernate.target
-    WantedBy=hybrid-sleep.target
-    WantedBy=suspend-then-hibernate.target
-    
-/bin/i3exit (notice /bin/minikube-anki-pause)
-
-    ...
-    /bin/minikube-anki-pause ; dm-tool switch-to-greeter
-    /bin/minikube-anki-pause ; $logind suspend
-    /bin/minikube-anki-pause ; $logind hibernate
-    /bin/minikube-anki-pause ; $logind suspend-then-hibernate
-    ...
-    
-/bin/lightdm-display-setup-script
-
-    #!/bin/sh
-        
-    su achuhlomin -c "/bin/minikube-anki-resume" &
-        
-    exit 0
-
-/etc/lightdm/lightdm.conf
-
-    ...
-    display-setup-script=/bin/lightdm-display-setup-script
-    ...

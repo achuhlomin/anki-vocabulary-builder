@@ -5,7 +5,6 @@ FROM ubuntu:20.04
 # Env vars for the nvidia-container-runtime.
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
-ENV DEBIAN_FRONTEND noninteractive
 
 # Dependencies for glvnd, X11 and anki
 RUN apt-get update \
