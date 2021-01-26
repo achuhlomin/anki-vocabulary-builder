@@ -54,3 +54,20 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
     
     # Delete
     kubectl delete -f secret.yml -f deployment-minikube.yml
+    
+### Autostart
+
+/etc/systemd/system/anki-docker-cluster.service
+
+    [Unit]
+    Description=Run anki-docker-cluster
+    After=docker.service
+    
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    User=achuhlomin
+    ExecStart=minikube start -p anki-docker-cluster
+    
+    [Install]
+    WantedBy=docker.service
