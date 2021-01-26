@@ -47,7 +47,7 @@ export const onAddHandler = async (ctx) => {
       examples,
     } = definitions[offset];
 
-    const s3 = new AWS.S3({ // todo
+    const s3 = new AWS.S3({
       accessKeyId: awsAccessKeyId,
       secretAccessKey: awsSecretAccessKey,
       signatureVersion: 'v4',

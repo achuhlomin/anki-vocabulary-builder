@@ -1,3 +1,9 @@
 export const onStartHandler = (ctx) => {
-  return ctx.reply('Welcome! Send me a word 🥳')
+  try {
+    ctx.reply('Welcome! Send me a word 🥳')
+  } catch (e) {
+    console.error(e)
+    
+    ctx.reply(e.message)
+  }
 }

@@ -33,3 +33,8 @@ export const formatMeta = ({poses, region, gram}) => {
 
   return [_poses, region, gram].filter(i => i).join(' ')
 }
+
+export const formatDef = (def) => {
+  return def.replace(/([a-z])/, val => val.toUpperCase())
+
+}

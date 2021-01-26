@@ -12,6 +12,9 @@ https://minikube.sigs.k8s.io/docs/handbook/pushing/
     
     # Delete cluster
     minikube delete -p anki-docker-cluster
+    
+    # Dashboard
+    minikube dashboard -p anki-docker-cluster
 
 ### Set up cluster
 

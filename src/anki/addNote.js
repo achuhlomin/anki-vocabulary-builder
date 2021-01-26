@@ -4,6 +4,7 @@ import {
   formatAlternatives,
   formatTranslations,
   formatMeta,
+  formatDef,
 } from "./fields.js"
 
 export const addNote = async (endpoint, deckName, fields) => {
@@ -36,7 +37,7 @@ export const addNote = async (endpoint, deckName, fields) => {
           id,
           word: headword,
           meta: formatMeta({poses, region, gram}),
-          def,
+          def: formatDef(def),
           phon_uk: phonUK,
           phon_us: phonUS,
           ex1: examples[0],
