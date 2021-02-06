@@ -26,7 +26,11 @@ const reply = async (ctx, redisClient, {definitions, alternatives, translations}
   const [definition, ...rest] = definitions
   const {headword, urlUK, urlUS} = definition
 
-  await replyVoices(ctx, urlUK, urlUS)
+  await replyVoices(ctx, {
+    urlUK,
+    urlUS,
+    headword,
+  })
 
   const pivotMessageId = await replyPivot(ctx, {
     definition,

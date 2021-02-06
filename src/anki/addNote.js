@@ -77,9 +77,10 @@ export const addNote = async (endpoint, deckName, fields) => {
     }
   }
 
-  const {body} = await got.post(endpoint, {
+  const body = await got.post(endpoint, {
+    resolveBodyOnly: true,
+    responseType: 'json',
     json: data,
-    responseType: 'json'
   });
 
   return body;

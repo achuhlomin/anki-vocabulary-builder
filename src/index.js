@@ -1,6 +1,6 @@
-import Telegraf from 'telegraf'
-import redis from 'redis'
-import asyncRedis from 'async-redis'
+import Telegraf from "telegraf";
+import redis from "redis";
+import asyncRedis from "async-redis";
 
 import {
   onStartHandler,
@@ -9,9 +9,9 @@ import {
   onTextHandler,
   onMoreHandler,
   onAddHandler,
-} from './handlers/index.js'
+} from "./handlers/index.js";
 
-const S3_BUCKET_NAME = 'anki-vocabulary-bucket';
+const S3_BUCKET_NAME = "anki-vocabulary-bucket";
 
 const {
   REDIS_HOST,
@@ -20,15 +20,16 @@ const {
   STUDENT_LANG,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
-} = process.env
+} = process.env;
 
-const bot = new Telegraf(BOT_TOKEN)
+const bot = new Telegraf(BOT_TOKEN);
 
-const redisClient = asyncRedis.decorate(redis.createClient({
+const redisClient = asyncRedis.decorate(
+  redis.createClient({
     host: REDIS_HOST,
     port: 6379,
-  }
-));
+  })
+);
 
 bot.use((ctx, next) => {
   ctx.state = {
@@ -39,17 +40,36 @@ bot.use((ctx, next) => {
     awsAccessKeyId: AWS_ACCESS_KEY_ID,
     awsSecretAccessKey: AWS_SECRET_ACCESS_KEY,
     redisClient,
-  }
+  };
 
-  return next()
-})
+  return next();
+});
 
-bot.start(onStartHandler)
-bot.help(onHelpHandler)
-bot.command('sync', onSyncHandler)
-bot.on('text', onTextHandler)
-bot.action('more', onMoreHandler)
-bot.action('add', onAddHandler)
+const delay = () => new Promise((resolve) => setTimeout(() => resolve(), 1000));
 
-await bot.launch()
+const throttle = (handler) => {
+  const chats = {};
 
+  return async (ctx) => {
+    const { id } = await ctx.getChat();
+    const blocking = chats[id];
+
+    if (blocking) {
+      chats[id] = blocking.then(() => handler(ctx));
+      // .then(delay)
+    } else {
+      chats[id] = handler(ctx);
+      // .then(delay);
+    }
+    return chats[id];
+  };
+};
+
+bot.start(onStartHandler);
+bot.help(onHelpHandler);
+bot.command("sync", onSyncHandler);
+bot.on("text", throttle(onTextHandler));
+bot.action("more", onMoreHandler);
+bot.action("add", onAddHandler);
+
+await bot.launch();

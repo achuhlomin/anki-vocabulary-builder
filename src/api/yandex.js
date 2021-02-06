@@ -20,7 +20,9 @@ const reverseLookup = async (yandexToken, primaryTerm, term, from, to) => {
 }
 
 export const lookup = async (yandexToken, term, from, to, shallow = true) => {
-  const {body} = await got('api/v1/dicservice.json/lookup', {
+  const body = await got('api/v1/dicservice.json/lookup', {
+    resolveBodyOnly: true,
+    responseType: 'json',
     prefixUrl: `https://dictionary.yandex.net`,
     searchParams: {
       lang: `${from}-${to}`,
@@ -29,7 +31,7 @@ export const lookup = async (yandexToken, term, from, to, shallow = true) => {
     }
   })
 
-  const defs = JSON.parse(body).def
+  const defs = body.def
   const primaryGroup = []
   const translations = []
   const promises = [];
