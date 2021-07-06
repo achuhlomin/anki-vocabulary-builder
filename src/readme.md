@@ -1,3 +1,3 @@
 ### Setup dev
 
-    docker run -p 6379:6379 redis
+    docker run -p 6379:6379 --name anki-redis redis

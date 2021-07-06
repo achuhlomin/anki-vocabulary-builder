@@ -20,6 +20,7 @@ const {
   STUDENT_LANG,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
+  ANKI_ENDPOINT,
 } = process.env;
 
 const bot = new Telegraf(BOT_TOKEN);
@@ -39,6 +40,7 @@ bot.use((ctx, next) => {
     s3BucketName: S3_BUCKET_NAME,
     awsAccessKeyId: AWS_ACCESS_KEY_ID,
     awsSecretAccessKey: AWS_SECRET_ACCESS_KEY,
+    ankiEndpoint: ANKI_ENDPOINT,
     redisClient,
   };
 
